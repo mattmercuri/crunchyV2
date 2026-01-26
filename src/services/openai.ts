@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import crunchyConfig from '../crunchy.config.js';
-import config from '../config.js';
+import config from '../environment.config.js';
 
 
 export function retrieveOpenAIClient() {
