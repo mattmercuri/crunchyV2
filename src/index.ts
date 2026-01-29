@@ -11,6 +11,7 @@ interface Tracker {
   incrementEnrichments(): void;
   incrementErrors(): void;
   incrementApolloCredits(): void;
+  logSummaryStats(): void;
 }
 
 interface PipelineContext {
@@ -52,5 +53,45 @@ class RunTracker implements Tracker {
 
   incrementApolloCredits(): void {
     this.apolloCredits++
+  }
+
+  logSummaryStats(): void {
+    return
+  }
+}
+
+class Pipeline<InitialInput, CurrentOutput> {
+  private constructor(
+    private readonly steps: PipelineStage<any, any>[] = []
+  ) { }
+
+  static create<T>(): Pipeline<T, T> {
+    return new Pipeline([])
+  }
+
+  pipe<Next>(
+    stage: PipelineStage<CurrentOutput, Next>
+  ): Pipeline<InitialInput, Next> {
+    return new Pipeline([...this.steps, stage])
+  }
+
+  async run(input: InitialInput, context: PipelineContext): Promise<CurrentOutput> {
+    let currentData: any = input
+
+    for (const stage of this.steps) {
+      try {
+        currentData = await stage.process(currentData, context)
+        context.tracker.incrementEnrichments()
+      } catch (err) {
+        context.tracker.incrementErrors()
+        if (err instanceof Error) {
+          context.logger.error(err.message)
+        } else {
+          context.logger.error(`Unknown Error occured: ${JSON.stringify(err, null, 2)}`)
+        }
+      }
+    }
+
+    return currentData
   }
 }
