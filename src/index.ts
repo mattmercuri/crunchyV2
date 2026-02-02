@@ -4,7 +4,7 @@ import { getDomain } from "./services/domains.js";
 
 /**
  * TODO:
- * -
+ * - Fix ESLINT config
  */
 
 interface Logger {
