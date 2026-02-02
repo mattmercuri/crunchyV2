@@ -5,6 +5,15 @@ import { getDomain } from "./services/domains.js";
 /**
  * TODO:
  * - Fix ESLINT config
+ * - Validate input
+ * - Validate output
+ */
+
+/**
+ * NOTES:
+ * - Don't like the reliance on a specific zod schema (the extends) as it
+ * makes it so the stages cannot be independent of workflow (or reordered)
+ * - Don't like how I have to first parse raw data with Zod
  */
 
 interface Logger {
@@ -14,12 +23,14 @@ interface Logger {
 }
 
 interface Tracker {
-  successes: number;
+  enrichments: number;
   errors: number;
   apolloCalls: number;
+  openAiCalls: number;
   incrementEnrichments(): void;
   incrementErrors(): void;
   incrementApolloCalls(): void;
+  incrementOpenAiCalls(): void;
   logSummaryStats(): void;
 }
 
@@ -49,12 +60,13 @@ class RunLogger implements Logger {
 }
 
 class RunTracker implements Tracker {
-  successes: number = 0;
+  enrichments: number = 0;
   errors: number = 0;
   apolloCalls: number = 0;
+  openAiCalls: number = 0;
 
   incrementEnrichments(): void {
-    this.successes++
+    this.enrichments++
   }
 
   incrementErrors(): void {
@@ -63,6 +75,10 @@ class RunTracker implements Tracker {
 
   incrementApolloCalls(): void {
     this.apolloCalls++
+  }
+
+  incrementOpenAiCalls(): void {
+    this.openAiCalls++
   }
 
   logSummaryStats(): void {
@@ -121,12 +137,21 @@ const InputSchema = z.strictObject({
   'Website': z.string()
 });
 
-const OrganizationOutput = InputSchema.extend({
+type Input = z.infer<typeof InputSchema>
+
+class PreProcessStage implements PipelineStage<Input, Input> {
+  name = 'Remove rows with insufficient data'
+
+  process(input: Input, _: PipelineContext): Input {
+    const validatedInput = InputSchema.parse(input)
+    return validatedInput
+  }
+}
+
+const OrganizationOutputSchema = InputSchema.extend({
   organizationId: z.string()
 });
-
-type Input = z.infer<typeof InputSchema>
-type OrganizationOutput = z.infer<typeof OrganizationOutput>
+type OrganizationOutput = z.infer<typeof OrganizationOutputSchema>
 
 function selectOrganizationFromDomain(
   organizations: OrganizationSearchAPIResponse['organizations'],
@@ -215,13 +240,18 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
   }
 }
 
-class PreProcessStage implements PipelineStage<Input, Input> {
-  name = 'Remove rows with insufficient data'
+const BestContactOutputSchema = OrganizationOutputSchema.extend({
+  'Contact First Name': z.string(),
+  'Contact Last Name': z.string(),
+  'Contact Title': z.string(),
+  'Contact Email': z.string(),
+})
+type BestContactOutput = z.infer<typeof BestContactOutputSchema>
 
-  process(input: Input, _: PipelineContext): Input {
-    const validatedInput = InputSchema.parse(input)
-    return validatedInput
-  }
+class GetBestContactStage implements PipelineStage<OrganizationOutput, BestContactOutput> {
+  name = 'Get best contact in Apollo'
+
+  async process(input: OrganizationOutput, context: PipelineContext): Promise<BestContactOutput> { }
 }
 
 export async function runCrunchy() {
