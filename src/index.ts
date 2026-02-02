@@ -262,19 +262,21 @@ class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutpu
     let peopleData
     peopleData = await getPeople(input.organizationId, context.titlesToSearch)
     context.tracker.incrementApolloCalls()
+    peopleData = peopleData.people.filter(person => person.has_email)
 
-    if (!peopleData || peopleData.total_entries <= 0 || !peopleData.people.length) {
+    if (!peopleData.length) {
       peopleData = await getPeople(input.organizationId, [], true)
       context.tracker.incrementApolloCalls()
+      peopleData = peopleData.people.filter(person => person.has_email)
     }
 
-    if (!peopleData || peopleData.total_entries <= 0 || !peopleData.people.length) {
+    if (!peopleData.length) {
       context.throwError(`Could not find anyone in apollo for ${input["Organization Name"]}`)
     }
 
     return {
       ...input,
-      people: peopleData.people
+      people: peopleData
     }
   }
 }
@@ -361,7 +363,7 @@ class EnrichContactStage implements PipelineStage<GetBestContactOutput, EnrichCo
       ...input,
       'Contact First Name': data.person.first_name,
       'Contact Last Name': data.person.last_name,
-      'Contact Title': data.person.last_name,
+      'Contact Title': data.person.title,
       'Contact Email': data.person.email
     }
   }
