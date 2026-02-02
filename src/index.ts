@@ -3,6 +3,7 @@ import { getOrganization, getPeople, getPeopleEnrichment, type OrganizationSearc
 import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { mockRows } from "./testdata.js";
+import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
 
 /**
  * TODO:
@@ -369,6 +370,37 @@ class EnrichContactStage implements PipelineStage<GetBestContactOutput, EnrichCo
   }
 }
 
+const OutputSchema = z.strictObject({
+  'Company Name': z.string(),
+  'Funding': z.string(),
+  'Funding Type': z.string(),
+  'Website': z.string(),
+  'Contact First Name': z.string(),
+  'Contact Last Name': z.string(),
+  'Contact Title': z.string(),
+  'Contact Email': z.string(),
+  'Lead Investor': z.string().nullish()
+})
+type Output = z.infer<typeof OutputSchema>
+
+class PostProcessStage implements PipelineStage<EnrichContactOutput, Output> {
+  name = 'Post process data'
+
+  process(input: EnrichContactOutput, context: PipelineContext): Output {
+    return {
+      'Company Name': input['Organization Name'],
+      'Funding': formatFundingAmount(input['Last Funding Amount (in USD)']),
+      'Funding Type': lowercaseFirst(input['Last Funding Type']),
+      'Website': input.Website,
+      'Contact First Name': input['Contact First Name'],
+      'Contact Last Name': input['Contact Last Name'],
+      'Contact Title': input['Contact Title'],
+      'Contact Email': input['Contact Email'],
+      'Lead Investor': formatLeadInvestor(input['Lead Investors'] ?? '')
+    }
+  }
+}
+
 export async function runCrunchy() {
   const pipeline = Pipeline.create<Input>()
     .pipe(new PreProcessStage())
@@ -376,6 +408,7 @@ export async function runCrunchy() {
     .pipe(new GetPeopleStage())
     .pipe(new GetBestContactStage())
     .pipe(new EnrichContactStage())
+    .pipe(new PostProcessStage())
 
   const context: PipelineContext = {
     logger: new RunLogger(),
