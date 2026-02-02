@@ -87,7 +87,7 @@ class Pipeline<InitialInput, CurrentOutput> {
         if (err instanceof Error) {
           context.logger.error(err.message)
         } else {
-          context.logger.error(`Unknown Error occured: ${JSON.stringify(err, null, 2)}`)
+          context.logger.error(`Unknown error occured: ${JSON.stringify(err, null, 2)}`)
         }
       }
     }
