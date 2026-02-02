@@ -1,5 +1,5 @@
 import z from "zod";
-import { getOrganization, type OrganizationSearchAPIResponse } from "./services/apollo.js";
+import { getOrganization, getPeople, type OrganizationSearchAPIResponse } from "./services/apollo.js";
 import { getDomain } from "./services/domains.js";
 
 /**
@@ -38,6 +38,7 @@ interface PipelineContext {
   logger: Logger;
   tracker: Tracker;
   throwError(message: string): never;
+  titlesToSearch: string[]
 }
 
 interface PipelineStage<InputSchema, OutputSchema> {
@@ -240,24 +241,61 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
   }
 }
 
-const BestContactOutputSchema = OrganizationOutputSchema.extend({
+const GetPeopleOutputSchema = OrganizationOutputSchema.extend({
+  people: z.array(z.object({
+    id: z.string(),
+    first_name: z.string(),
+    last_name_obfuscated: z.string(),
+    title: z.string(),
+    has_email: z.boolean()
+  }))
+})
+type GetPeopleOutput = z.infer<typeof GetPeopleOutputSchema>
+
+class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutput> {
+  name = 'Get contacts for organization in Apollo'
+
+  async process(input: OrganizationOutput, context: PipelineContext): Promise<GetPeopleOutput> {
+    let peopleData
+    peopleData = await getPeople(input.organizationId, context.titlesToSearch)
+    context.tracker.incrementApolloCalls()
+
+    if (!peopleData || peopleData.total_entries <= 0 || !peopleData.people.length) {
+      peopleData = await getPeople(input.organizationId, [], true)
+      context.tracker.incrementApolloCalls()
+    }
+
+    if (!peopleData || peopleData.total_entries <= 0 || !peopleData.people.length) {
+      context.throwError(`Could not find anyone in apollo for ${input["Organization Name"]}`)
+    }
+
+    return {
+      ...input,
+      people: peopleData.people
+    }
+  }
+}
+
+const GetBestContactOutputSchema = GetPeopleOutputSchema.extend({
   'Contact First Name': z.string(),
   'Contact Last Name': z.string(),
   'Contact Title': z.string(),
-  'Contact Email': z.string(),
+  'Contact Email': z.string()
 })
-type BestContactOutput = z.infer<typeof BestContactOutputSchema>
+type GetBestContactOutput = z.infer<typeof GetBestContactOutputSchema>
 
-class GetBestContactStage implements PipelineStage<OrganizationOutput, BestContactOutput> {
-  name = 'Get best contact in Apollo'
+class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestContactOutput> {
+  name = 'Get best contact from Apollo'
 
-  async process(input: OrganizationOutput, context: PipelineContext): Promise<BestContactOutput> { }
+  async process(input: GetPeopleOutput, context: PipelineContext): Promise<GetBestContactOutput> { }
 }
 
 export async function runCrunchy() {
   const pipeline = Pipeline.create<Input>()
     .pipe(new PreProcessStage())
     .pipe(new GetOrganizationStage())
+    .pipe(new GetPeopleStage())
+    .pipe(new GetBestContactStage())
 
   // const rows = []
 
@@ -266,7 +304,8 @@ export async function runCrunchy() {
     tracker: new RunTracker(),
     throwError: (message: string) => {
       throw new Error(message)
-    }
+    },
+    titlesToSearch: ['test', 'test']
   }
 
   // for (const row of rows) {

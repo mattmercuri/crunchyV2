@@ -120,6 +120,8 @@ export async function getPeople(
   const base = new URL(config.apollo.baseApiUrl + '/mixed_people/api_search');
   base.searchParams.set('organization_ids[]', organizationId);
   base.searchParams.set('include_similar_titles', String(shouldIncludeSimilarTitles));
+  base.searchParams.set('contact_email_status[]', 'verified')
+  base.searchParams.set('contact_email_status[]', 'likely to engage')
 
   if (titles?.length) {
     titles.forEach((title) => base.searchParams.append('person_titles[]', title));
