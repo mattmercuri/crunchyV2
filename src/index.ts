@@ -1,5 +1,5 @@
 import z from "zod";
-import { getOrganization, getPeople, type OrganizationSearchAPIResponse, type PeopleSearchAPIResponse } from "./services/apollo.js";
+import { getOrganization, getPeople, getPeopleEnrichment, type OrganizationSearchAPIResponse, type PeopleSearchAPIResponse } from "./services/apollo.js";
 import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { mockRows } from "./testdata.js";
@@ -342,12 +342,38 @@ class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestConta
   }
 }
 
+const EnrichContactOutputSchema = GetBestContactOutputSchema.extend({
+  'Contact First Name': z.string(),
+  'Contact Last Name': z.string(),
+  'Contact Title': z.string(),
+  'Contact Email': z.string(),
+})
+type EnrichContactOutput = z.infer<typeof EnrichContactOutputSchema>
+
+class EnrichContactStage implements PipelineStage<GetBestContactOutput, EnrichContactOutput> {
+  name = 'Enrich contact information for best contact in Apollo'
+
+  async process(input: GetBestContactOutput, context: PipelineContext): Promise<EnrichContactOutput> {
+    const data = await getPeopleEnrichment(input.bestContactId)
+    context.tracker.incrementApolloCalls()
+
+    return {
+      ...input,
+      'Contact First Name': data.person.first_name,
+      'Contact Last Name': data.person.last_name,
+      'Contact Title': data.person.last_name,
+      'Contact Email': data.person.email
+    }
+  }
+}
+
 export async function runCrunchy() {
   const pipeline = Pipeline.create<Input>()
     .pipe(new PreProcessStage())
     .pipe(new GetOrganizationStage())
     .pipe(new GetPeopleStage())
     .pipe(new GetBestContactStage())
+    .pipe(new EnrichContactStage())
 
   const context: PipelineContext = {
     logger: new RunLogger(),
