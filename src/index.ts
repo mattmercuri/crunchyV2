@@ -16,10 +16,10 @@ interface Logger {
 interface Tracker {
   successes: number;
   errors: number;
-  apolloCredits: number;
+  apolloCalls: number;
   incrementEnrichments(): void;
   incrementErrors(): void;
-  incrementApolloCredits(): void;
+  incrementApolloCalls(): void;
   logSummaryStats(): void;
 }
 
@@ -51,7 +51,7 @@ class RunLogger implements Logger {
 class RunTracker implements Tracker {
   successes: number = 0;
   errors: number = 0;
-  apolloCredits: number = 0;
+  apolloCalls: number = 0;
 
   incrementEnrichments(): void {
     this.successes++
@@ -61,8 +61,8 @@ class RunTracker implements Tracker {
     this.errors++
   }
 
-  incrementApolloCredits(): void {
-    this.apolloCredits++
+  incrementApolloCalls(): void {
+    this.apolloCalls++
   }
 
   logSummaryStats(): void {
@@ -169,7 +169,7 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
     }
 
     data = await getOrganization({ websiteDomains: [companyDomain] })
-    context.tracker.incrementApolloCredits()
+    context.tracker.incrementApolloCalls()
     organizationId = selectOrganizationFromDomain(data.organizations, data.accounts, companyDomain)
 
     if (organizationId) {
@@ -182,7 +182,7 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
     // SECOND: Try by name and location and check with website (still validating website like above)
     const primaryLocation = input["Headquarters Location"].split(',').map(s => s.trim())[0] ?? ''
     data = await getOrganization({ name: input["Organization Name"], locations: [primaryLocation] })
-    context.tracker.incrementApolloCredits()
+    context.tracker.incrementApolloCalls()
     organizationId = selectOrganizationFromDomain(data.organizations, data.accounts, companyDomain)
 
     if (organizationId) {
@@ -204,7 +204,7 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
     // FOURTH: Select first response in account (if present), else organization W/O location in call
     data = await getOrganization({ name: input["Organization Name"] })
     organizationId = data.accounts[0]?.organization_id ?? data.organizations[0]?.id ?? ''
-    context.tracker.incrementApolloCredits()
+    context.tracker.incrementApolloCalls()
 
     if (!organizationId) context.throwError('Could not find organization in Apollo')
 
