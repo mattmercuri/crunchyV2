@@ -508,10 +508,18 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
     }
   }
 
+  const validatedFinalRows: Output[] = []
+  completedRows.forEach(completedRow => {
+    const { success, data } = z.safeParse(OutputSchema, completedRow)
+    if (success) {
+      validatedFinalRows.push(data)
+    }
+  })
+
   context.tracker.logSummaryStats()
 
   const timestamp = new Date().toISOString();
-  writeToCsv(`PROCESSED_${timestamp}_${inputRelativePath}`, completedRows)
+  writeToCsv(`PROCESSED_${timestamp}_${inputRelativePath}`, validatedFinalRows)
 }
 
 async function main() {
