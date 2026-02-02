@@ -2,14 +2,17 @@ import z from "zod";
 import { getOrganization, getPeople, getPeopleEnrichment, type OrganizationSearchAPIResponse, type PeopleSearchAPIResponse } from "./services/apollo.js";
 import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
-import { mockRows } from "./testdata.js";
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
+import { getInputFromCsv } from "./services/csv.js";
+import type { RaiseSegment } from "./crunchy.config.js";
+import crunchyConfig from "./crunchy.config.js";
 
 /**
  * TODO:
  * - Fix ESLINT config
  * - Validate input
  * - Validate output
+ * - Use CSV rows for calculation help
  */
 
 /**
@@ -127,6 +130,8 @@ class Pipeline<InitialInput, CurrentOutput> {
         } else {
           context.logger.error(`Unknown error occured: ${JSON.stringify(err, null, 2)}`)
         }
+
+        break
       }
     }
 
@@ -410,7 +415,82 @@ class PostProcessStage implements PipelineStage<EnrichContactOutput, Output> {
   }
 }
 
-export async function runCrunchy() {
+// export async function runCrunchy() {
+//   const pipeline = Pipeline.create<Input>()
+//     .pipe(new PreProcessStage())
+//     .pipe(new GetOrganizationStage())
+//     .pipe(new GetPeopleStage())
+//     .pipe(new GetBestContactStage())
+//     .pipe(new EnrichContactStage())
+//     .pipe(new PostProcessStage())
+
+//   const context: PipelineContext = {
+//     logger: new RunLogger(),
+//     tracker: new RunTracker(),
+//     throwError: (message: string) => {
+//       throw new Error(message)
+//     },
+//     // TODO: Update to pull from config
+//     titlesToSearch: [
+//       'Chief Executive Officer',
+//       'CEO',
+//       'Founder',
+//       'Co-Founder',
+//       'Chief Technology Officer',
+//       'CTO',
+//       'Vice President of Technology',
+//       'VP Technology',
+//       'Head of Technology'
+//     ]
+//   }
+
+//   // TODO: remove
+//   const rows = mockRows.slice(0, 2)
+
+//   // TODO: Remove this - and validation of row
+//   for (const row of rows) {
+//     try {
+//       const rowCleaned = InputSchema.parse(row)
+//       const result = await pipeline.run(rowCleaned, context)
+//       console.log("Success:", result);
+//     } catch (err) {
+//       if (err instanceof Error) {
+//         context.logger.error(`PIPELINE ERROR - ${err.message}`)
+//       } else {
+//         context.logger.error('Unknown Pipeline Error')
+//       }
+//     }
+//   }
+
+//   context.tracker.logSummaryStats()
+// }
+
+async function main() {
+  runCrunchyWithLocalCsv('src/inputFiles/preseedcompanies-1-29-2026.csv', 'Preseed')
+}
+
+main()
+
+async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseSegment) {
+  const { rows, totalRows: _ } = await getInputFromCsv(inputRelativePath)
+
+  const cleanedRows: Input[] = []
+  rows.forEach((row) => {
+    const { success, data } = z.safeParse(InputSchema, row)
+    if (success) {
+      cleanedRows.push(data)
+    }
+  })
+
+  const context: PipelineContext = {
+    logger: new RunLogger(),
+    tracker: new RunTracker(),
+    throwError: (message: string) => {
+      throw new Error(message)
+    },
+    titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment]
+  }
+
   const pipeline = Pipeline.create<Input>()
     .pipe(new PreProcessStage())
     .pipe(new GetOrganizationStage())
@@ -419,35 +499,11 @@ export async function runCrunchy() {
     .pipe(new EnrichContactStage())
     .pipe(new PostProcessStage())
 
-  const context: PipelineContext = {
-    logger: new RunLogger(),
-    tracker: new RunTracker(),
-    throwError: (message: string) => {
-      throw new Error(message)
-    },
-    // TODO: Update to pull from config
-    titlesToSearch: [
-      'Chief Executive Officer',
-      'CEO',
-      'Founder',
-      'Co-Founder',
-      'Chief Technology Officer',
-      'CTO',
-      'Vice President of Technology',
-      'VP Technology',
-      'Head of Technology'
-    ]
-  }
-
-  // TODO: remove
-  const rows = mockRows.slice(0, 2)
-
-  // TODO: Remove this - and validation of row
-  for (const row of rows) {
+  const completedRows: Output[] = []
+  for (const row of cleanedRows) {
     try {
-      const rowCleaned = InputSchema.parse(row)
-      const result = await pipeline.run(rowCleaned, context)
-      console.log("Success:", result);
+      const result = await pipeline.run(row, context)
+      completedRows.push(result)
     } catch (err) {
       if (err instanceof Error) {
         context.logger.error(`PIPELINE ERROR - ${err.message}`)
@@ -458,19 +514,8 @@ export async function runCrunchy() {
   }
 
   context.tracker.logSummaryStats()
+
+  // 4. Iterate over rows and feed workflow
+  // 5. Bubble up errors
+  // 6. Record successful rows to new CSV (writestream?)
 }
-
-async function main() {
-  runCrunchy()
-}
-
-main()
-
-// function runCrunchyWithLocalCsv(inputRelativePath: string) {
-//   // 1. Read rows into memory from FS
-//   // 2. Remove bad rows (using Zod)
-//   // 3. Create pipeline context (with proper config)
-//   // 4. Iterate over rows and feed workflow
-//   // 5. Bubble up errors
-//   // 6. Record successful rows to new CSV (writestream?)
-// }
