@@ -23,6 +23,7 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "openai": "^6.16.0",
+    "tldts": "^7.0.21",
     "zod": "^4.3.6"
   }
 }

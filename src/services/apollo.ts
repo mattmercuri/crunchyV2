@@ -69,13 +69,17 @@ const baseHeaders = {
 };
 
 type OrganizationSearchOptions = {
+  name?: string;
   locations?: string[] | undefined;
   websiteDomains?: string[] | undefined;
 };
 
-export async function getOrganization(name: string, options?: OrganizationSearchOptions) {
+export async function getOrganization(options?: OrganizationSearchOptions) {
   const base = new URL(config.apollo.baseApiUrl + '/mixed_companies/search');
-  base.searchParams.set('q_organization_name', name);
+
+  if (options?.name) {
+    base.searchParams.set('q_organization_name', options.name);
+  }
 
   if (options?.locations?.length) {
     options.locations.forEach((location) =>

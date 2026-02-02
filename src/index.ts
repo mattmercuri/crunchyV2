@@ -1,3 +1,12 @@
+import z from "zod";
+import { getOrganization, type OrganizationSearchAPIResponse } from "./services/apollo.js";
+import { getDomain } from "./services/domains.js";
+
+/**
+ * TODO:
+ * -
+ */
+
 interface Logger {
   info(message: string): void;
   error(message: string): void;
@@ -17,6 +26,7 @@ interface Tracker {
 interface PipelineContext {
   logger: Logger;
   tracker: Tracker;
+  throwError(message: string): never;
 }
 
 interface PipelineStage<InputSchema, OutputSchema> {
@@ -93,5 +103,121 @@ class Pipeline<InitialInput, CurrentOutput> {
     }
 
     return currentData
+  }
+}
+
+const context: PipelineContext = {
+  logger: new RunLogger(),
+  tracker: new RunTracker(),
+  throwError: (message: string) => {
+    throw new Error(message)
+  }
+}
+
+const InputSchema = z.strictObject({
+  'Organization Name': z.string(),
+  'Organization Name URL': z.string().nullable(),
+  'Last Funding Date': z.date(),
+  'Last Funding Type': z.string(),
+  'Number of Employees': z.string(),
+  'Industries': z.string().nullable(),
+  'Headquarters Location': z.string(),
+  'Description': z.string().nullable(),
+  'CB Rank (Company)': z.string().nullable(),
+  'Last Funding Amount': z.number(),
+  'Last Funding Amount Currency': z.string(),
+  'Last Funding Amount (in USD)': z.number(),
+  'Lead Investors': z.string().nullable(),
+  'Website': z.string()
+});
+
+const OrganizationOutput = InputSchema.extend({
+  organizationId: z.string()
+});
+
+type Input = z.infer<typeof InputSchema>
+type OrganizationOutput = z.infer<typeof OrganizationOutput>
+
+function selectOrganizationFromDomain(
+  organizations: OrganizationSearchAPIResponse['organizations'],
+  accounts: OrganizationSearchAPIResponse['accounts'],
+  domain: string
+) {
+  let match
+
+  if (accounts.length) {
+    match = accounts.find(account => getDomain(account.website_url ?? '') === domain)
+    if (!match) {
+      match = accounts.find(account => account.primary_domain === domain)
+    }
+  }
+
+  if (match) return match.organization_id
+  if (!organizations.length) return
+
+  match = organizations.find(organization => getDomain(organization.website_url ?? '') === domain)
+  if (!match) {
+    match = organizations.find(organization => organization.primary_domain === domain)
+  }
+
+  if (!match) return
+
+  return match.id
+}
+
+class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
+  name = 'Get Apollo Organization ID'
+
+  async process(input: Input, context: PipelineContext): Promise<OrganizationOutput> {
+    let data
+    let organizationId
+
+    // FIRST: Try by only website search
+    const companyDomain = getDomain(input.Website)
+    if (!companyDomain) {
+      context.throwError(`Could not extract company domain for ${input["Organization Name"]}`)
+    }
+
+    data = await getOrganization({ websiteDomains: [companyDomain] })
+    context.tracker.incrementApolloCredits()
+    organizationId = selectOrganizationFromDomain(data.organizations, data.accounts, companyDomain)
+
+    if (organizationId) {
+      return {
+        ...input,
+        organizationId
+      }
+    }
+
+    // SECOND: Try by name and location and check with website (still validating website like above)
+    const primaryLocation = input["Headquarters Location"].split(',').map(s => s.trim())[0] ?? ''
+    data = await getOrganization({ name: input["Organization Name"], locations: [primaryLocation] })
+    context.tracker.incrementApolloCredits()
+    organizationId = selectOrganizationFromDomain(data.organizations, data.accounts, companyDomain)
+
+    if (organizationId) {
+      return {
+        ...input,
+        organizationId
+      }
+    }
+
+    // THIRD: Select first response in account (if present), else organization
+    const orgId = data.accounts[0]?.organization_id ?? data.organizations[0]?.id ?? ''
+    if (!orgId) context.throwError('Could not find organization in Apollo')
+
+    return {
+      ...input,
+      organizationId: orgId
+    }
+  }
+}
+
+class PreProcessStage implements PipelineStage<Input, Input> {
+  name = 'Remove rows with insufficient data'
+
+  process(input: Input, _: PipelineContext): Input {
+    const validatedInput = InputSchema.parse(input)
+    return validatedInput
   }
 }

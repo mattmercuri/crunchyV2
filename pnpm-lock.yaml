@@ -14,6 +14,9 @@ importers:
       openai:
         specifier: ^6.16.0
         version: 6.16.0(zod@4.3.6)
+      tldts:
+        specifier: ^7.0.21
+        version: 7.0.21
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -272,6 +275,13 @@ packages:
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
+  tldts-core@7.0.21:
+    resolution: {integrity: sha512-oVOMdHvgjqyzUZH1rOESgJP1uNe2bVrfK0jUHHmiM2rpEiRbf3j4BrsIc6JigJRbHGanQwuZv/R+LTcHsw+bLA==}
+
+  tldts@7.0.21:
+    resolution: {integrity: sha512-Plu6V8fF/XU6d2k8jPtlQf5F4Xx2hAin4r2C2ca7wR8NK5MbRTo9huLUWRe28f3Uk8bYZfg74tit/dSjc18xnw==}
+    hasBin: true
+
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
     hasBin: true
@@ -471,6 +481,12 @@ snapshots:
       zod: 4.3.6
 
   resolve-pkg-maps@1.0.0: {}
+
+  tldts-core@7.0.21: {}
+
+  tldts@7.0.21:
+    dependencies:
+      tldts-core: 7.0.21
 
   ts-node@10.9.2(@types/node@25.0.10)(typescript@5.9.3):
     dependencies:
