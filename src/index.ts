@@ -46,7 +46,9 @@ interface PipelineContext {
   logger: Logger;
   tracker: Tracker;
   throwError(message: string): never;
-  titlesToSearch: string[]
+  config: {
+    titlesToSearch: string[]
+  }
 }
 
 interface PipelineStage<InputSchema, OutputSchema> {
@@ -285,7 +287,7 @@ class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutpu
 
   async process(input: OrganizationOutput, context: PipelineContext): Promise<GetPeopleOutput> {
     let peopleData
-    peopleData = await getPeople(input.organizationId, context.titlesToSearch)
+    peopleData = await getPeople(input.organizationId, context.config.titlesToSearch)
     context.tracker.incrementApolloCalls()
     peopleData = peopleData.people.filter(person => person.has_email)
 
@@ -342,7 +344,7 @@ class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestConta
     }
 
     // SECOND: Try to match exactly the correct title to the returned people (in priority sequence)
-    for (const title of context.titlesToSearch) {
+    for (const title of context.config.titlesToSearch) {
       const match = input.people.find(
         person => person.title.trim().toUpperCase() === title.trim().toUpperCase()
       );
@@ -355,7 +357,7 @@ class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestConta
     }
 
     // THIRD: Enlist help of OpenAI to match best fitting title
-    const bestContact = await getBestContactWithLlm(input.people, context.titlesToSearch);
+    const bestContact = await getBestContactWithLlm(input.people, context.config.titlesToSearch);
     context.tracker.incrementOpenAiCalls()
 
     if (!bestContact || !bestContact.id) {
@@ -493,7 +495,9 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
     throwError: (message: string) => {
       throw new Error(message)
     },
-    titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment]
+    config: {
+      titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment]
+    }
   }
 
   const pipeline = Pipeline.create<Input>()
