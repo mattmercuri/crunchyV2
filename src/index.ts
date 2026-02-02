@@ -1,6 +1,7 @@
 import z from "zod";
-import { getOrganization, getPeople, type OrganizationSearchAPIResponse } from "./services/apollo.js";
+import { getOrganization, getPeople, type OrganizationSearchAPIResponse, type PeopleSearchAPIResponse } from "./services/apollo.js";
 import { getDomain } from "./services/domains.js";
+import { getBestTitle } from "./services/openai.js";
 
 /**
  * TODO:
@@ -247,7 +248,8 @@ const GetPeopleOutputSchema = OrganizationOutputSchema.extend({
     first_name: z.string(),
     last_name_obfuscated: z.string(),
     title: z.string(),
-    has_email: z.boolean()
+    has_email: z.boolean(),
+    last_refreshed_at: z.string()
   }))
 })
 type GetPeopleOutput = z.infer<typeof GetPeopleOutputSchema>
@@ -277,17 +279,66 @@ class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutpu
 }
 
 const GetBestContactOutputSchema = GetPeopleOutputSchema.extend({
-  'Contact First Name': z.string(),
-  'Contact Last Name': z.string(),
-  'Contact Title': z.string(),
-  'Contact Email': z.string()
+  bestContactId: z.string()
 })
 type GetBestContactOutput = z.infer<typeof GetBestContactOutputSchema>
 
-class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestContactOutput> {
-  name = 'Get best contact from Apollo'
+async function getBestContactWithLlm(returnedPeople: PeopleSearchAPIResponse['people'], titlesToSearch: string[]) {
+  const returnedTitles = returnedPeople.map(person => person.title);
+  const bestTitle = await getBestTitle(returnedTitles, titlesToSearch);
 
-  async process(input: GetPeopleOutput, context: PipelineContext): Promise<GetBestContactOutput> { }
+  if (!bestTitle) return;
+
+  const match = returnedPeople.find(person => person.title.trim().toUpperCase() === bestTitle.trim().toUpperCase());
+  return match;
+}
+
+
+class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestContactOutput> {
+  name = 'Get best contact from Apollo (just ID)'
+
+  async process(input: GetPeopleOutput, context: PipelineContext): Promise<GetBestContactOutput> {
+    let bestContactId
+
+    // FIRST: Select solo option if there is only one
+    if (input.people.length === 1) {
+      bestContactId = input.people[0]?.id
+
+      if (!bestContactId) {
+        context.throwError(`Cannot extract singular best contact for ${input["Organization Name"]} - ${JSON.stringify(input.people)}`)
+      }
+
+      return {
+        ...input,
+        bestContactId
+      }
+    }
+
+    // SECOND: Try to match exactly the correct title to the returned people (in priority sequence)
+    for (const title of context.titlesToSearch) {
+      const match = input.people.find(
+        person => person.title.trim().toUpperCase() === title.trim().toUpperCase()
+      );
+      if (match && match.id) {
+        return {
+          ...input,
+          bestContactId: match.id
+        }
+      }
+    }
+
+    // THIRD: Enlist help of OpenAI to match best fitting title
+    const bestContact = await getBestContactWithLlm(input.people, context.titlesToSearch);
+
+    if (!bestContact || !bestContact.id) {
+      context.throwError(`Could not find an appropriate contact at ${input["Organization Name"]}`)
+    }
+
+    return {
+      ...input,
+      bestContactId: bestContact.id
+    }
+  }
 }
 
 export async function runCrunchy() {
