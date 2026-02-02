@@ -109,16 +109,14 @@ class Pipeline<InitialInput, CurrentOutput> {
 const InputSchema = z.strictObject({
   'Organization Name': z.string(),
   'Organization Name URL': z.string().nullable(),
-  'Last Funding Date': z.date(),
+  'Last Funding Date': z.coerce.string(),
   'Last Funding Type': z.string(),
   'Number of Employees': z.string(),
-  'Industries': z.string().nullable(),
   'Headquarters Location': z.string(),
   'Description': z.string().nullable(),
-  'CB Rank (Company)': z.string().nullable(),
-  'Last Funding Amount': z.number(),
+  'Last Funding Amount': z.coerce.number(),
   'Last Funding Amount Currency': z.string(),
-  'Last Funding Amount (in USD)': z.number(),
+  'Last Funding Amount (in USD)': z.coerce.number(),
   'Lead Investors': z.string().nullable(),
   'Website': z.string()
 });
@@ -195,12 +193,24 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
     }
 
     // THIRD: Select first response in account (if present), else organization
-    const orgId = data.accounts[0]?.organization_id ?? data.organizations[0]?.id ?? ''
-    if (!orgId) context.throwError('Could not find organization in Apollo')
+    organizationId = data.accounts[0]?.organization_id ?? data.organizations[0]?.id ?? ''
+    if (organizationId) {
+      return {
+        ...input,
+        organizationId
+      }
+    }
+
+    // FOURTH: Select first response in account (if present), else organization W/O location in call
+    data = await getOrganization({ name: input["Organization Name"] })
+    organizationId = data.accounts[0]?.organization_id ?? data.organizations[0]?.id ?? ''
+    context.tracker.incrementApolloCredits()
+
+    if (!organizationId) context.throwError('Could not find organization in Apollo')
 
     return {
       ...input,
-      organizationId: orgId
+      organizationId
     }
   }
 }
@@ -214,12 +224,12 @@ class PreProcessStage implements PipelineStage<Input, Input> {
   }
 }
 
-async function runCrunchy() {
+export async function runCrunchy() {
   const pipeline = Pipeline.create<Input>()
     .pipe(new PreProcessStage())
     .pipe(new GetOrganizationStage())
 
-  const rows = []
+  // const rows = []
 
   const context: PipelineContext = {
     logger: new RunLogger(),
@@ -229,16 +239,22 @@ async function runCrunchy() {
     }
   }
 
-  for (const row of rows) {
-    try {
-      const result = await pipeline.run(row, context)
-      console.log("Success:", result);
-    } catch (err) {
-      if (err instanceof Error) {
-        context.logger.error(`PIPELINE ERROR - ${err.message}`)
-      } else {
-        context.logger.error('Unknown Pipeline Error')
-      }
-    }
-  }
+  // for (const row of rows) {
+  //   try {
+  //     const result = await pipeline.run(row, context)
+  //     console.log("Success:", result);
+  //   } catch (err) {
+  //     if (err instanceof Error) {
+  //       context.logger.error(`PIPELINE ERROR - ${err.message}`)
+  //     } else {
+  //       context.logger.error('Unknown Pipeline Error')
+  //     }
+  //   }
+  // }
 }
+
+async function main() {
+  runCrunchy()
+}
+
+main()
