@@ -3,7 +3,7 @@ import { getOrganization, getPeople, getPeopleEnrichment, type OrganizationSearc
 import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
-import { getInputFromCsv } from "./services/csv.js";
+import { getInputFromCsv, writeToCsv } from "./services/csv.js";
 import type { RaiseSegment } from "./crunchy.config.js";
 import crunchyConfig from "./crunchy.config.js";
 
@@ -13,6 +13,7 @@ import crunchyConfig from "./crunchy.config.js";
  * - Validate input
  * - Validate output
  * - Use CSV rows for calculation help
+ * - Fix errors for individual rows
  */
 
 /**
@@ -285,7 +286,7 @@ class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutpu
     }
 
     if (!peopleData.length) {
-      context.throwError(`Could not find anyone in apollo for ${input["Organization Name"]}`)
+      context.throwError(`Could not find anyone in Apollo for ${input["Organization Name"]}`)
     }
 
     return {
@@ -465,12 +466,6 @@ class PostProcessStage implements PipelineStage<EnrichContactOutput, Output> {
 //   context.tracker.logSummaryStats()
 // }
 
-async function main() {
-  runCrunchyWithLocalCsv('src/inputFiles/preseedcompanies-1-29-2026.csv', 'Preseed')
-}
-
-main()
-
 async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseSegment) {
   const { rows, totalRows: _ } = await getInputFromCsv(inputRelativePath)
 
@@ -515,7 +510,12 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
 
   context.tracker.logSummaryStats()
 
-  // 4. Iterate over rows and feed workflow
-  // 5. Bubble up errors
-  // 6. Record successful rows to new CSV (writestream?)
+  const timestamp = new Date().toISOString();
+  writeToCsv(`PROCESSED_${timestamp}_${inputRelativePath}`, completedRows)
 }
+
+async function main() {
+  runCrunchyWithLocalCsv('preseedcompanies-1-29-2026.csv', 'Preseed')
+}
+
+main()

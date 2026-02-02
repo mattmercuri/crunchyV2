@@ -20,14 +20,14 @@ const RawInputSchema = z.strictObject({
 
 type RawInput = z.infer<typeof RawInputSchema>
 
-export async function getInputFromCsv(inputPath: string): Promise<{
+export async function getInputFromCsv(inputFile: string): Promise<{
   rows: RawInput[]
   totalRows: number
 }> {
   const rows: RawInput[] = []
   let totalRows = 0
 
-  const consolidatedInputPath = path.resolve(process.cwd(), inputPath)
+  const consolidatedInputPath = path.resolve(`${process.cwd()}/src/inputFiles/`, inputFile)
 
   return new Promise((resolve, reject) => {
     const parser = csv.parse<RawInput, RawInput>({ headers: true })
@@ -48,5 +48,13 @@ export async function getInputFromCsv(inputPath: string): Promise<{
       .on("end", () => {
         resolve({ rows, totalRows })
       })
+  })
+}
+
+export function writeToCsv<T extends Record<string, unknown>>(outputFile: string, rows: Array<T>) {
+  const consolidatedOutputPath = path.resolve(`${process.cwd()}/src/outputFiles/`, outputFile)
+  csv.writeToPath(consolidatedOutputPath, rows, {
+    headers: true,
+    includeEndRowDelimiter: true
   })
 }
