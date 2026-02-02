@@ -86,7 +86,16 @@ class RunTracker implements Tracker {
   }
 
   logSummaryStats(): void {
-    return
+    const totalProcessed = this.enrichments + this.errors
+    const successPercentage = Math.round((this.enrichments / totalProcessed) * 100)
+
+    console.log('========== COMPLETED CRUNCHY RUN ==========')
+    console.log(`|| ++++++++++++++++ ${successPercentage}% ++++++++++++++++`)
+    console.log(`|| ----------------------------------------`)
+    console.log(`|| ENRICHMENTS: ${this.enrichments}`)
+    console.log(`|| ERRORS: ${this.errors}`)
+    console.log(`|| TOTAL: ${totalProcessed}`)
+    console.log(`|| ----------------------------------------`)
   }
 }
 
@@ -111,7 +120,6 @@ class Pipeline<InitialInput, CurrentOutput> {
     for (const stage of this.steps) {
       try {
         currentData = await stage.process(currentData, context)
-        context.tracker.incrementEnrichments()
       } catch (err) {
         context.tracker.incrementErrors()
         if (err instanceof Error) {
@@ -359,6 +367,7 @@ class EnrichContactStage implements PipelineStage<GetBestContactOutput, EnrichCo
   async process(input: GetBestContactOutput, context: PipelineContext): Promise<EnrichContactOutput> {
     const data = await getPeopleEnrichment(input.bestContactId)
     context.tracker.incrementApolloCalls()
+    context.tracker.incrementEnrichments()
 
     return {
       ...input,
@@ -386,7 +395,7 @@ type Output = z.infer<typeof OutputSchema>
 class PostProcessStage implements PipelineStage<EnrichContactOutput, Output> {
   name = 'Post process data'
 
-  process(input: EnrichContactOutput, context: PipelineContext): Output {
+  process(input: EnrichContactOutput, _: PipelineContext): Output {
     return {
       'Company Name': input['Organization Name'],
       'Funding': formatFundingAmount(input['Last Funding Amount (in USD)']),
@@ -447,6 +456,8 @@ export async function runCrunchy() {
       }
     }
   }
+
+  context.tracker.logSummaryStats()
 }
 
 async function main() {
@@ -454,3 +465,12 @@ async function main() {
 }
 
 main()
+
+// function runCrunchyWithLocalCsv(inputRelativePath: string) {
+//   // 1. Read rows into memory from FS
+//   // 2. Remove bad rows (using Zod)
+//   // 3. Create pipeline context (with proper config)
+//   // 4. Iterate over rows and feed workflow
+//   // 5. Bubble up errors
+//   // 6. Record successful rows to new CSV (writestream?)
+// }
