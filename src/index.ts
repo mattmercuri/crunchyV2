@@ -94,7 +94,7 @@ class RunTracker implements Tracker {
     const successPercentage = Math.round((this.enrichments / totalProcessed) * 100)
 
     console.log('========== COMPLETED CRUNCHY RUN ==========')
-    console.log(`|| ++++++++++++++++ ${successPercentage}% ++++++++++++++++`)
+    console.log(`|| +++++++++++++++++ ${successPercentage}% +++++++++++++++++`)
     console.log(`|| ----------------------------------------`)
     console.log(`|| ENRICHMENTS: ${this.enrichments}`)
     console.log(`|| ERRORS: ${this.errors}`)
