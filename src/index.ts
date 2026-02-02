@@ -14,6 +14,7 @@ import crunchyConfig from "./crunchy.config.js";
  * - Validate output
  * - Use CSV rows for calculation help
  * - Fix errors for individual rows
+ * - Add API calls to logs
  */
 
 /**
