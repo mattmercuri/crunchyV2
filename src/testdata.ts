@@ -1,4 +1,4 @@
-const mockRows = [
+export const mockRows = [
   {
     organizationName: "Autonomous Technologies Group",
     organizationNameUrl:
