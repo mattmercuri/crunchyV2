@@ -160,8 +160,17 @@ type Input = z.infer<typeof InputSchema>
 class PreProcessStage implements PipelineStage<Input, Input> {
   name = 'Remove rows with insufficient data'
 
-  process(input: Input, _: PipelineContext): Input {
+  process(input: Input, context: PipelineContext): Input {
     const validatedInput = InputSchema.parse(input)
+
+    if (validatedInput["Last Funding Amount"] <= 0) {
+      context.throwError(`Omitting ${validatedInput["Organization Name"]} - no funding amount`)
+    }
+
+    if (validatedInput['Website'] === '' || !validatedInput['Website']) {
+      context.throwError(`Omitting ${validatedInput["Organization Name"]} - no website`)
+    }
+
     return validatedInput
   }
 }

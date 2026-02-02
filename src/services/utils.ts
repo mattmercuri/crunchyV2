@@ -21,5 +21,6 @@ export function formatLeadInvestor(investors: string) {
 
 export function lowercaseFirst(str: string) {
   if (typeof str !== 'string' || str.length === 0 || !str[0]) return str;
+  if (str === 'Pre-Seed') return 'pre-seed'
   return str[0].toLowerCase() + str.slice(1);
 };
