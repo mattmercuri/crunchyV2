@@ -2,6 +2,7 @@ import z from "zod";
 import { getOrganization, getPeople, type OrganizationSearchAPIResponse, type PeopleSearchAPIResponse } from "./services/apollo.js";
 import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
+import { mockRows } from "./testdata.js";
 
 /**
  * TODO:
@@ -293,7 +294,6 @@ async function getBestContactWithLlm(returnedPeople: PeopleSearchAPIResponse['pe
   return match;
 }
 
-
 class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestContactOutput> {
   name = 'Get best contact from Apollo (just ID)'
 
@@ -329,6 +329,7 @@ class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestConta
 
     // THIRD: Enlist help of OpenAI to match best fitting title
     const bestContact = await getBestContactWithLlm(input.people, context.titlesToSearch);
+    context.tracker.incrementOpenAiCalls()
 
     if (!bestContact || !bestContact.id) {
       context.throwError(`Could not find an appropriate contact at ${input["Organization Name"]}`)
@@ -348,8 +349,6 @@ export async function runCrunchy() {
     .pipe(new GetPeopleStage())
     .pipe(new GetBestContactStage())
 
-  // const rows = []
-
   const context: PipelineContext = {
     logger: new RunLogger(),
     tracker: new RunTracker(),
@@ -357,21 +356,36 @@ export async function runCrunchy() {
       throw new Error(message)
     },
     // TODO: Update to pull from config
-    titlesToSearch: ['test', 'test']
+    titlesToSearch: [
+      'Chief Executive Officer',
+      'CEO',
+      'Founder',
+      'Co-Founder',
+      'Chief Technology Officer',
+      'CTO',
+      'Vice President of Technology',
+      'VP Technology',
+      'Head of Technology'
+    ]
   }
 
-  // for (const row of rows) {
-  //   try {
-  //     const result = await pipeline.run(row, context)
-  //     console.log("Success:", result);
-  //   } catch (err) {
-  //     if (err instanceof Error) {
-  //       context.logger.error(`PIPELINE ERROR - ${err.message}`)
-  //     } else {
-  //       context.logger.error('Unknown Pipeline Error')
-  //     }
-  //   }
-  // }
+  // TODO: remove
+  const rows = mockRows.slice(0, 2)
+
+  // TODO: Remove this - and validation of row
+  for (const row of rows) {
+    try {
+      const rowCleaned = InputSchema.parse(row)
+      const result = await pipeline.run(rowCleaned, context)
+      console.log("Success:", result);
+    } catch (err) {
+      if (err instanceof Error) {
+        context.logger.error(`PIPELINE ERROR - ${err.message}`)
+      } else {
+        context.logger.error('Unknown Pipeline Error')
+      }
+    }
+  }
 }
 
 async function main() {
