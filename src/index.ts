@@ -305,6 +305,7 @@ export async function runCrunchy() {
     throwError: (message: string) => {
       throw new Error(message)
     },
+    // TODO: Update to pull from config
     titlesToSearch: ['test', 'test']
   }
 
