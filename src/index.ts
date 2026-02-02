@@ -106,14 +106,6 @@ class Pipeline<InitialInput, CurrentOutput> {
   }
 }
 
-const context: PipelineContext = {
-  logger: new RunLogger(),
-  tracker: new RunTracker(),
-  throwError: (message: string) => {
-    throw new Error(message)
-  }
-}
-
 const InputSchema = z.strictObject({
   'Organization Name': z.string(),
   'Organization Name URL': z.string().nullable(),
@@ -219,5 +211,34 @@ class PreProcessStage implements PipelineStage<Input, Input> {
   process(input: Input, _: PipelineContext): Input {
     const validatedInput = InputSchema.parse(input)
     return validatedInput
+  }
+}
+
+async function runCrunchy() {
+  const pipeline = Pipeline.create<Input>()
+    .pipe(new PreProcessStage())
+    .pipe(new GetOrganizationStage())
+
+  const rows = []
+
+  const context: PipelineContext = {
+    logger: new RunLogger(),
+    tracker: new RunTracker(),
+    throwError: (message: string) => {
+      throw new Error(message)
+    }
+  }
+
+  for (const row of rows) {
+    try {
+      const result = await pipeline.run(row, context)
+      console.log("Success:", result);
+    } catch (err) {
+      if (err instanceof Error) {
+        context.logger.error(`PIPELINE ERROR - ${err.message}`)
+      } else {
+        context.logger.error('Unknown Pipeline Error')
+      }
+    }
   }
 }
