@@ -59,6 +59,8 @@ const titlePriorities: Record<RaiseSegment, string[]> = {
     'Founder',
     'Chief Technology Officer',
     'CTO',
+    'Chief Operating Officer',
+    'COO',
     'VP Technology',
     'Head of Technology',
   ],
