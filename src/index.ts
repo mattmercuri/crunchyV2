@@ -544,7 +544,7 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
 }
 
 async function main() {
-  runCrunchyWithLocalCsv('seriesAcompanies-1-29-2026 (2).csv', 'ASmall')
+  runCrunchyWithLocalCsv('Crunchy2026JanuarySeed.csv', 'SeedSmall')
 }
 
 main()
