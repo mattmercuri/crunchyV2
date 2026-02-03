@@ -164,6 +164,7 @@ class PreProcessStage implements PipelineStage<Input, Input> {
   name = 'Remove rows with insufficient data'
 
   process(input: Input, context: PipelineContext): Input {
+    context.logger.info(`Starting enrichment for ${input["Organization Name"]}...`)
     const validatedInput = InputSchema.parse(input)
 
     if (validatedInput["Last Funding Amount"] <= 0) {
