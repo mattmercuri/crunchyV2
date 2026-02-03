@@ -131,12 +131,12 @@ const titlePriorities: Record<RaiseSegment, string[]> = {
   ],
 };
 
-type Options = {
+export type CrunchyOptions = {
   needsFundingAmount?: boolean
   needsLeadInvestor?: boolean
 }
 
-const options: Record<RaiseSegment, Options> = {
+const options: Record<RaiseSegment, CrunchyOptions> = {
   'Preseed': {
     needsFundingAmount: false,
     needsLeadInvestor: false,

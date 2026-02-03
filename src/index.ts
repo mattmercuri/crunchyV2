@@ -4,7 +4,7 @@ import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
 import { getInputFromCsv, writeToCsv } from "./services/csv.js";
-import type { RaiseSegment } from "./crunchy.config.js";
+import type { CrunchyOptions, RaiseSegment } from "./crunchy.config.js";
 import crunchyConfig from "./crunchy.config.js";
 
 /**
@@ -48,6 +48,7 @@ interface PipelineContext {
   throwError(message: string): never;
   config: {
     titlesToSearch: string[]
+    options: CrunchyOptions
   }
 }
 
@@ -167,8 +168,12 @@ class PreProcessStage implements PipelineStage<Input, Input> {
     context.logger.info(`Starting enrichment for ${input["Organization Name"]}...`)
     const validatedInput = InputSchema.parse(input)
 
-    if (validatedInput["Last Funding Amount"] <= 0) {
+    if (context.config.options.needsFundingAmount && validatedInput["Last Funding Amount"] <= 0) {
       context.throwError(`Omitting ${validatedInput["Organization Name"]} - no funding amount`)
+    }
+
+    if (context.config.options.needsLeadInvestor && (!validatedInput['Lead Investors'] || validatedInput['Lead Investors'] === '')) {
+      context.throwError(`Omitting ${validatedInput["Organization Name"]} - no lead investors`)
     }
 
     if (validatedInput['Website'] === '' || !validatedInput['Website']) {
@@ -497,7 +502,8 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
       throw new Error(message)
     },
     config: {
-      titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment]
+      titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment],
+      options: crunchyConfig.options[segment]
     }
   }
 
