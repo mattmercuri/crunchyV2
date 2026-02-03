@@ -71,6 +71,8 @@ const titlePriorities: Record<RaiseSegment, string[]> = {
     'Head of Technology',
     'Chief Executive Officer',
     'CEO',
+    'Chief Operating Officer',
+    'COO',
     'Founder',
   ],
   ASmall: [
@@ -81,6 +83,8 @@ const titlePriorities: Record<RaiseSegment, string[]> = {
     'CTO',
     'VP Technology',
     'Head of Technology',
+    'Chief Operating Officer',
+    'COO',
   ],
   ALarge: [
     'Chief Technology Officer',
@@ -89,6 +93,8 @@ const titlePriorities: Record<RaiseSegment, string[]> = {
     'Head of Technology',
     'Chief Executive Officer',
     'CEO',
+    'Chief Operating Officer',
+    'COO',
     'Founder',
   ],
   BCCS: [
