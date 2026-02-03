@@ -131,6 +131,46 @@ const titlePriorities: Record<RaiseSegment, string[]> = {
   ],
 };
 
+type Options = {
+  needsFundingAmount?: boolean
+  needsLeadInvestor?: boolean
+}
+
+const options: Record<RaiseSegment, Options> = {
+  'Preseed': {
+    needsFundingAmount: false,
+    needsLeadInvestor: false,
+  },
+  'SeedSmall': {
+    needsFundingAmount: true,
+    needsLeadInvestor: false,
+  },
+  'SeedLarge': {
+    needsFundingAmount: true,
+    needsLeadInvestor: false,
+  },
+  'ASmall': {
+    needsFundingAmount: true,
+    needsLeadInvestor: true
+  },
+  'ALarge': {
+    needsFundingAmount: true,
+    needsLeadInvestor: true
+  },
+  'BCSmall': {
+    needsFundingAmount: true,
+    needsLeadInvestor: true
+  },
+  'BCLarge': {
+    needsFundingAmount: true,
+    needsLeadInvestor: true
+  },
+  'BCCS': {
+    needsFundingAmount: true,
+    needsLeadInvestor: true
+  }
+}
+
 const crunchyConfig = {
   bestTitle: {
     model: 'gpt-5-mini-2025-08-07',
@@ -141,6 +181,7 @@ const crunchyConfig = {
     titlePriorities,
   },
   buckets,
+  options
 } as const;
 
 export default crunchyConfig;
