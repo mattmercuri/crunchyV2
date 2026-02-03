@@ -167,7 +167,7 @@ class PreProcessStage implements PipelineStage<Input, Input> {
 
   process(input: Input, context: PipelineContext): Input {
     const totalProcessed = context.tracker.errors + context.tracker.enrichments
-    context.logger.info(`(${totalProcessed}/${context.config.totalRows}) Starting enrichment for ${input["Organization Name"]}...`)
+    context.logger.info(`(${totalProcessed + 1}/${context.config.totalRows}) Starting enrichment for ${input["Organization Name"]}...`)
     const validatedInput = InputSchema.parse(input)
 
     if (context.config.options.needsFundingAmount && validatedInput["Last Funding Amount"] <= 0) {
@@ -547,7 +547,7 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
 }
 
 async function main() {
-  runCrunchyWithLocalCsv('Crunchy2026JanuaryASmall.csv', 'ASmall')
+  runCrunchyWithLocalCsv('Crunchy2026JanuaryBCCS.csv', 'BCCS')
 }
 
 main()
