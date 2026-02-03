@@ -47,8 +47,9 @@ interface PipelineContext {
   tracker: Tracker;
   throwError(message: string): never;
   config: {
-    titlesToSearch: string[]
-    options: CrunchyOptions
+    titlesToSearch: string[];
+    options: CrunchyOptions;
+    totalRows: number;
   }
 }
 
@@ -165,7 +166,8 @@ class PreProcessStage implements PipelineStage<Input, Input> {
   name = 'Remove rows with insufficient data'
 
   process(input: Input, context: PipelineContext): Input {
-    context.logger.info(`Starting enrichment for ${input["Organization Name"]}...`)
+    const totalProcessed = context.tracker.errors + context.tracker.enrichments
+    context.logger.info(`(${totalProcessed}/${context.config.totalRows}) Starting enrichment for ${input["Organization Name"]}...`)
     const validatedInput = InputSchema.parse(input)
 
     if (context.config.options.needsFundingAmount && validatedInput["Last Funding Amount"] <= 0) {
@@ -485,7 +487,7 @@ class PostProcessStage implements PipelineStage<EnrichContactOutput, Output> {
 // }
 
 async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseSegment) {
-  const { rows, totalRows: _ } = await getInputFromCsv(inputRelativePath)
+  const { rows, totalRows } = await getInputFromCsv(inputRelativePath)
 
   const cleanedRows: Input[] = []
   rows.forEach((row) => {
@@ -503,7 +505,8 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
     },
     config: {
       titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment],
-      options: crunchyConfig.options[segment]
+      options: crunchyConfig.options[segment],
+      totalRows
     }
   }
 
@@ -544,7 +547,7 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
 }
 
 async function main() {
-  runCrunchyWithLocalCsv('Crunchy2026JanuarySeed.csv', 'SeedSmall')
+  runCrunchyWithLocalCsv('Crunchy2026JanuaryASmall.csv', 'ASmall')
 }
 
 main()
