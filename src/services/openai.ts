@@ -34,11 +34,11 @@ export async function getBestTitle(returnedTitles: string[], titlesToSearch: str
 }
 
 
-type LendingCompanyConfig = {
+export type LendingCompanyConfig = {
   model: string;
   systemPrompt: string;
   outputFormat: z.ZodObject<{
-    companyType: z.ZodArray<z.ZodString>
+    companyType: z.ZodEnum;
   }>;
 }
 
