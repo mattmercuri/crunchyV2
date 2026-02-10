@@ -32,3 +32,27 @@ export async function getBestTitle(returnedTitles: string[], titlesToSearch: str
   const bestTitle = completion.choices[0]?.message.parsed;
   return bestTitle?.bestTitle;
 }
+
+
+type LendingCompanyConfig = {
+  model: string;
+  systemPrompt: string;
+  outputFormat: z.ZodObject<{
+    companyType: z.ZodArray<z.ZodString>
+  }>;
+}
+
+export async function getLendingCompanyType(companyInfo: string, config: LendingCompanyConfig) {
+  const client = retrieveOpenAIClient()
+  const completion = await client.chat.completions.parse({
+    model: config.model,
+    messages: [
+      { role: 'system', content: config.systemPrompt },
+      { role: 'user', content: companyInfo }
+    ],
+    response_format: zodResponseFormat(config.outputFormat, 'companyType')
+  })
+
+  const companyType = completion.choices[0]?.message.parsed;
+  return companyType?.companyType;
+}

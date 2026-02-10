@@ -42,7 +42,7 @@ interface Tracker {
   logSummaryStats(): void;
 }
 
-interface PipelineContext {
+export interface PipelineContext {
   logger: Logger;
   tracker: Tracker;
   throwError(message: string): never;
@@ -53,7 +53,7 @@ interface PipelineContext {
   }
 }
 
-interface PipelineStage<InputSchema, OutputSchema> {
+export interface PipelineStage<InputSchema, OutputSchema> {
   name: string;
   process(input: InputSchema, context: PipelineContext): Promise<OutputSchema> | OutputSchema
 }
