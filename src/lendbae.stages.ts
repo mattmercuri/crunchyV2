@@ -42,6 +42,35 @@ const CompanyTypeOutputSchema = CompanyTypeInputSchema.extend({
 })
 type CompanyTypeOutput = z.infer<typeof CompanyTypeOutputSchema>
 
+export const LendBaePostProcessOutputSchema = CompanyInputSchema.extend({
+  'Company Type': z.enum(COMPANY_TYPES),
+  'Contact First Name': z.string(),
+  'Contact Last Name': z.string(),
+  'Contact Title': z.string(),
+  'Contact Email': z.string()
+})
+export type LendBaePostProcessOutput = z.infer<typeof LendBaePostProcessOutputSchema>
+
+export class LendBaePostProcessStage implements PipelineStage<LendBaePostProcessOutput, LendBaePostProcessOutput> {
+  name = 'Finalize output for LendBae'
+
+  process(input: LendBaePostProcessOutput, _: PipelineContext): LendBaePostProcessOutput {
+    return LendBaePostProcessOutputSchema.parse({
+      'Company Name': input['Company Name'],
+      'Website': input['Website'],
+      'Company City': input['Company City'],
+      'SIC Codes': input['SIC Codes'],
+      'NAICS Codes': input['NAICS Codes'],
+      'Short Description': input['Short Description'],
+      'Company Type': input['Company Type'],
+      'Contact First Name': input['Contact First Name'],
+      'Contact Last Name': input['Contact Last Name'],
+      'Contact Title': input['Contact Title'],
+      'Contact Email': input['Contact Email']
+    })
+  }
+}
+
 export class GetCompanyTypeStage implements PipelineStage<CompanyTypeInput, CompanyTypeOutput> {
   name = 'Classify appropriate company type'
 

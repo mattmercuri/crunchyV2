@@ -4,7 +4,7 @@ import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
 import { getInputFromCsv, writeToCsv } from "./services/csv.js";
-import { CompanyInputSchema, type CompanyInput, CompanyToCrunchStage, GetCompanyTypeStage } from "./lendbae.stages.js";
+import { CompanyInputSchema, type CompanyInput, CompanyToCrunchStage, GetCompanyTypeStage, LendBaePostProcessStage, type LendBaePostProcessOutput, LendBaePostProcessOutputSchema } from "./lendbae.stages.js";
 import type { CrunchyOptions, RaiseSegment } from "./crunchy.config.js";
 import crunchyConfig from "./crunchy.config.js";
 
@@ -637,8 +637,9 @@ async function runLendbaeWithLocalCsv(inputRelativePath: string) {
     .pipe(new GetPeopleStage())
     .pipe(new GetBestContactStage())
     .pipe(new EnrichContactStage())
+    .pipe(new LendBaePostProcessStage())
 
-  const completedRows: Output[] = []
+  const completedRows: LendBaePostProcessOutput[] = []
   for (const row of cleanedRows) {
     try {
       const result = await pipeline.run(row, context)
@@ -652,9 +653,9 @@ async function runLendbaeWithLocalCsv(inputRelativePath: string) {
     }
   }
 
-  const validatedFinalRows: Output[] = []
+  const validatedFinalRows: LendBaePostProcessOutput[] = []
   completedRows.forEach(completedRow => {
-    const { success, data } = z.safeParse(OutputSchema, completedRow)
+    const { success, data } = z.safeParse(LendBaePostProcessOutputSchema, completedRow)
     if (success) {
       validatedFinalRows.push(data)
     }
