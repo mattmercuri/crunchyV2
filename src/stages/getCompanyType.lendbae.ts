@@ -1,8 +1,8 @@
-import z from "zod";
-import type { PipelineContext, PipelineStage } from "./index.js";
-import { getCompanyType, type CompanyTypeConfig } from "./services/openai.js";
+import z from "zod"
+import type { PipelineContext, PipelineStage } from "../index.js"
+import { getCompanyType, type CompanyTypeConfig } from "../services/openai.js"
 
-const COMPANY_TYPES = {
+export const COMPANY_TYPES = {
   'LendTech': 'A company that provides technology solutions to lenders, such as software platforms, data analytics, loan management systems, loan origination software, etc.',
   'Lender': 'A company that provides or brokers loans or credit to individuals or businesses. This could include banks, credit unions, online lenders, peer-to-peer lending platforms, etc.',
   'Neither': 'A company that does not fit the definition of either a LendTech or a Lender. This could include companies in other industries or sectors that do not provide technology solutions to lenders or offer loans/credit.',
@@ -19,22 +19,6 @@ export const CompanyInputSchema = z.object({
   'Short Description': z.string()
 })
 export type CompanyInput = z.infer<typeof CompanyInputSchema>
-
-const CompanyToCrunchSchema = CompanyInputSchema.transform((input) => ({
-  ...input,
-  'Organization Name': input['Company Name for Emails'],
-  'Headquarters Location': input['Company City']
-}))
-export type CompanyToCrunchOutput = z.output<typeof CompanyToCrunchSchema>
-
-export class CompanyToCrunchStage implements PipelineStage<CompanyInput, CompanyToCrunchOutput> {
-  name = 'Normalize input for Crunchy stages'
-
-  process(input: CompanyInput, _: PipelineContext): CompanyToCrunchOutput {
-    return CompanyToCrunchSchema.parse(input)
-  }
-}
-
 const CompanyTypeInputSchema = CompanyInputSchema
 type CompanyTypeInput = CompanyInput
 
@@ -93,35 +77,5 @@ export class GetCompanyTypeStage implements PipelineStage<CompanyTypeInput, Comp
       ...input,
       'Company Type': String(companyType) ?? ''
     }
-  }
-}
-
-export const LendBaePostProcessOutputSchema = CompanyInputSchema.extend({
-  'Company Type': z.enum(Object.keys(COMPANY_TYPES)),
-  'Contact First Name': z.string(),
-  'Contact Last Name': z.string(),
-  'Contact Title': z.string(),
-  'Contact Email': z.string()
-})
-export type LendBaePostProcessOutput = z.infer<typeof LendBaePostProcessOutputSchema>
-
-export class LendBaePostProcessStage implements PipelineStage<LendBaePostProcessOutput, LendBaePostProcessOutput> {
-  name = 'Finalize output for LendBae'
-
-  process(input: LendBaePostProcessOutput, _: PipelineContext): LendBaePostProcessOutput {
-    return LendBaePostProcessOutputSchema.parse({
-      'Company Name': input['Company Name'],
-      'Company Name for Emails': input['Company Name for Emails'],
-      'Website': input['Website'],
-      'Company City': input['Company City'],
-      'SIC Codes': input['SIC Codes'],
-      'NAICS Codes': input['NAICS Codes'],
-      'Short Description': input['Short Description'],
-      'Company Type': input['Company Type'],
-      'Contact First Name': input['Contact First Name'],
-      'Contact Last Name': input['Contact Last Name'],
-      'Contact Title': input['Contact Title'],
-      'Contact Email': input['Contact Email']
-    })
   }
 }
