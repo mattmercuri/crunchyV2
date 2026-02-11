@@ -38,12 +38,12 @@ const CompanyTypeInputSchema = CompanyInputSchema
 type CompanyTypeInput = CompanyInput
 
 const CompanyTypeOutputSchema = CompanyTypeInputSchema.extend({
-  'Company Type': z.enum(COMPANY_TYPES)
+  'Company Type': z.enum(Object.keys(COMPANY_TYPES))
 })
 type CompanyTypeOutput = z.infer<typeof CompanyTypeOutputSchema>
 
 export const LendBaePostProcessOutputSchema = CompanyInputSchema.extend({
-  'Company Type': z.enum(COMPANY_TYPES),
+  'Company Type': z.enum(Object.keys(COMPANY_TYPES)),
   'Contact First Name': z.string(),
   'Contact Last Name': z.string(),
   'Contact Title': z.string(),
