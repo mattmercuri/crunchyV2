@@ -34,7 +34,7 @@ export async function getBestTitle(returnedTitles: string[], titlesToSearch: str
 }
 
 
-export type LendingCompanyConfig = {
+export type CompanyTypeConfig = {
   model: string;
   systemPrompt: string;
   outputFormat: z.ZodObject<{
@@ -42,7 +42,7 @@ export type LendingCompanyConfig = {
   }>;
 }
 
-export async function getLendingCompanyType(companyInfo: string, config: LendingCompanyConfig) {
+export async function getCompanyType(companyInfo: string, config: CompanyTypeConfig) {
   const client = retrieveOpenAIClient()
   const completion = await client.chat.completions.parse({
     model: config.model,

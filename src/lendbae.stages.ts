@@ -1,8 +1,8 @@
 import z from "zod";
 import type { PipelineContext, PipelineStage } from "./index.js";
-import { getLendingCompanyType, type LendingCompanyConfig } from "./services/openai.js";
+import { getCompanyType, type CompanyTypeConfig } from "./services/openai.js";
 
-const LENDING_COMPANY_TYPES = ['LendTech', 'Lender', 'Neither', 'Unsure']
+const COMPANY_TYPES = ['LendTech', 'Lender', 'Neither', 'Unsure']
 
 const CompanyTypeInputSchema = z.object({
   'Company Name': z.string(),
@@ -15,25 +15,25 @@ const CompanyTypeInputSchema = z.object({
 type CompanyTypeInput = z.infer<typeof CompanyTypeInputSchema>
 
 const CompanyTypeOutputSchema = CompanyTypeInputSchema.extend({
-  'Company Type': z.enum(LENDING_COMPANY_TYPES)
+  'Company Type': z.enum(COMPANY_TYPES)
 })
 type CompanyTypeOutput = z.infer<typeof CompanyTypeOutputSchema>
 
-export class GetLendingCompanyType implements PipelineStage<CompanyTypeInput, CompanyTypeOutput> {
-  name = 'Classify appropriate lending company type'
+export class GetCompanyType implements PipelineStage<CompanyTypeInput, CompanyTypeOutput> {
+  name = 'Classify appropriate company type'
 
   async process(input: CompanyTypeInput, context: PipelineContext): Promise<CompanyTypeOutput> {
     const llmSystemPrompt = ``
     const llmUserPrompt = ``
-    const llmConfig: LendingCompanyConfig = {
+    const llmConfig: CompanyTypeConfig = {
       model: "gpt-5-mini-2025-08-07",
       systemPrompt: llmSystemPrompt,
       outputFormat: z.object({
-        companyType: z.enum(LENDING_COMPANY_TYPES)
+        companyType: z.enum(COMPANY_TYPES)
       })
     }
 
-    const companyType = await getLendingCompanyType(llmUserPrompt, llmConfig)
+    const companyType = await getCompanyType(llmUserPrompt, llmConfig)
     context.tracker.incrementOpenAiCalls()
 
     return {
