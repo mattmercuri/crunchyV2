@@ -23,8 +23,29 @@ export class GetCompanyType implements PipelineStage<CompanyTypeInput, CompanyTy
   name = 'Classify appropriate company type'
 
   async process(input: CompanyTypeInput, context: PipelineContext): Promise<CompanyTypeOutput> {
-    const llmSystemPrompt = ``
-    const llmUserPrompt = ``
+    const llmSystemPrompt = `You are a business analyst that specializes in classifying companies. You are given key pieces of information about a company to decide what type of company you are assessing. The user will provide their own company types for categorization. You will likely receive the following information:
+    - Company Name
+    - Website
+    - Company City
+    - SIC Codes
+    - NAICS Codes
+    - Short Description
+
+    Use all of the above information when making your classification. If you lack sufficient information, feel free to perform a web search to research the company further.
+
+    When confident in your assessment, respond with the best-fitting company type.`
+
+    const llmUserPrompt = `
+    I am looking for you to classify my company with one of the following types: ${COMPANY_TYPES.join(', ')}. Here is the information I have about my company:
+    - Company Name: ${input['Company Name']}
+    - Website: ${input['Website']}
+    - Company City: ${input['Company City']}
+    - SIC Codes: ${input['SIC Codes']}
+    - NAICS Codes: ${input['NAICS Codes']}
+    - Short Description: ${input['Short Description']}
+
+    What type of company is this?`
+
     const llmConfig: CompanyTypeConfig = {
       model: "gpt-5-mini-2025-08-07",
       systemPrompt: llmSystemPrompt,
