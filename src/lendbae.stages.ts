@@ -12,7 +12,6 @@ const CompanyTypeInputSchema = z.object({
   'NAICS Codes': z.string(),
   'Short Description': z.string()
 })
-
 type CompanyTypeInput = z.infer<typeof CompanyTypeInputSchema>
 
 const CompanyTypeOutputSchema = CompanyTypeInputSchema.extend({
