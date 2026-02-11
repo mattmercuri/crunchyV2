@@ -114,6 +114,10 @@ export class GetCompanyTypeStage implements PipelineStage<CompanyTypeInput, Comp
     const companyType = await getCompanyType(llmUserPrompt, llmConfig)
     context.tracker.incrementOpenAiCalls()
 
+    if (companyType === 'Unsure' || companyType === 'Neither') {
+      context.throwError(`The returned company type is invalid: ${companyType}`)
+    }
+
     return {
       ...input,
       'Company Type': String(companyType) ?? ''
