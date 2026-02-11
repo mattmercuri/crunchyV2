@@ -2,7 +2,12 @@ import z from "zod";
 import type { PipelineContext, PipelineStage } from "./index.js";
 import { getCompanyType, type CompanyTypeConfig } from "./services/openai.js";
 
-const COMPANY_TYPES = ['LendTech', 'Lender', 'Neither', 'Unsure']
+const COMPANY_TYPES = {
+  'LendTech': 'A company that provides technology solutions to lenders, such as software platforms, data analytics, loan management systems, loan origination software, etc.',
+  'Lender': 'A company that provides or brokers loans or credit to individuals or businesses. This could include banks, credit unions, online lenders, peer-to-peer lending platforms, etc.',
+  'Neither': 'A company that does not fit the definition of either a LendTech or a Lender. This could include companies in other industries or sectors that do not provide technology solutions to lenders or offer loans/credit.',
+  'Unsure': 'If you are unsure about the classification of the company based on the provided information, you can select this option. It indicates that there is not enough information to confidently classify the company as either a LendTech or a Lender.'
+}
 
 const CompanyTypeInputSchema = z.object({
   'Company Name': z.string(),
@@ -36,7 +41,7 @@ export class GetCompanyType implements PipelineStage<CompanyTypeInput, CompanyTy
     When confident in your assessment, respond with the best-fitting company type.`
 
     const llmUserPrompt = `
-    I am looking for you to classify my company with one of the following types: ${COMPANY_TYPES.join(', ')}. Here is the information I have about my company:
+    I am looking for you to classify my company with one of the following types: ${Object.keys(COMPANY_TYPES).join(', ')}. Here is the information I have about my company:
     - Company Name: ${input['Company Name']}
     - Website: ${input['Website']}
     - Company City: ${input['Company City']}
@@ -44,13 +49,16 @@ export class GetCompanyType implements PipelineStage<CompanyTypeInput, CompanyTy
     - NAICS Codes: ${input['NAICS Codes']}
     - Short Description: ${input['Short Description']}
 
+    Here is a detailed description of the company types that I have provided for you to use in your classification:
+    ${Object.entries(COMPANY_TYPES).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
+
     What type of company is this?`
 
     const llmConfig: CompanyTypeConfig = {
       model: "gpt-5-mini-2025-08-07",
       systemPrompt: llmSystemPrompt,
       outputFormat: z.object({
-        companyType: z.enum(COMPANY_TYPES)
+        companyType: z.enum(Object.keys(COMPANY_TYPES))
       })
     }
 
