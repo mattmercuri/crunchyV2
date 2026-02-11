@@ -117,9 +117,9 @@ class Pipeline<InitialInput, CurrentOutput> {
     return new Pipeline([])
   }
 
-  pipe<Next>(
-    stage: PipelineStage<CurrentOutput, Next>
-  ): Pipeline<InitialInput, Next> {
+  pipe<StageInput, StageOutput>(
+    stage: PipelineStage<StageInput, StageOutput> & (CurrentOutput extends StageInput ? unknown : never)
+  ): Pipeline<InitialInput, CurrentOutput & StageOutput> {
     return new Pipeline([...this.steps, stage])
   }
 
@@ -145,7 +145,7 @@ class Pipeline<InitialInput, CurrentOutput> {
   }
 }
 
-const InputSchema = z.strictObject({
+const InputSchema = z.object({
   'Organization Name': z.string(),
   'Organization Name URL': z.string().nullable(),
   'Last Funding Date': z.coerce.string(),
@@ -162,34 +162,51 @@ const InputSchema = z.strictObject({
 
 type Input = z.infer<typeof InputSchema>
 
-class PreProcessStage implements PipelineStage<Input, Input> {
+const PreProcessInputSchema = z.object({
+  'Organization Name': z.string(),
+  'Last Funding Amount': z.coerce.number(),
+  'Lead Investors': z.string().nullable(),
+  'Website': z.string()
+})
+type PreProcessInput = z.infer<typeof PreProcessInputSchema>
+
+type PreProcessOutput = PreProcessInput
+
+class PreProcessStage implements PipelineStage<PreProcessInput, PreProcessOutput> {
   name = 'Remove rows with insufficient data'
 
-  process(input: Input, context: PipelineContext): Input {
+  process(input: PreProcessInput, context: PipelineContext): PreProcessOutput {
+    PreProcessInputSchema.parse(input)
     const totalProcessed = context.tracker.errors + context.tracker.enrichments
     context.logger.info(`(${totalProcessed + 1}/${context.config.totalRows}) Starting enrichment for ${input["Organization Name"]}...`)
-    const validatedInput = InputSchema.parse(input)
 
-    if (context.config.options.needsFundingAmount && validatedInput["Last Funding Amount"] <= 0) {
-      context.throwError(`Omitting ${validatedInput["Organization Name"]} - no funding amount`)
+    if (context.config.options.needsFundingAmount && input["Last Funding Amount"] <= 0) {
+      context.throwError(`Omitting ${input["Organization Name"]} - no funding amount`)
     }
 
-    if (context.config.options.needsLeadInvestor && (!validatedInput['Lead Investors'] || validatedInput['Lead Investors'] === '')) {
-      context.throwError(`Omitting ${validatedInput["Organization Name"]} - no lead investors`)
+    if (context.config.options.needsLeadInvestor && (!input['Lead Investors'] || input['Lead Investors'] === '')) {
+      context.throwError(`Omitting ${input["Organization Name"]} - no lead investors`)
     }
 
-    if (validatedInput['Website'] === '' || !validatedInput['Website']) {
-      context.throwError(`Omitting ${validatedInput["Organization Name"]} - no website`)
+    if (input['Website'] === '' || !input['Website']) {
+      context.throwError(`Omitting ${input["Organization Name"]} - no website`)
     }
 
-    return validatedInput
+    return input
   }
 }
 
-const OrganizationOutputSchema = InputSchema.extend({
+const GetOrganizationInputSchema = z.object({
+  'Organization Name': z.string(),
+  'Headquarters Location': z.string(),
+  'Website': z.string()
+})
+type GetOrganizationInput = z.infer<typeof GetOrganizationInputSchema>
+
+const GetOrganizationOutputSchema = GetOrganizationInputSchema.extend({
   organizationId: z.string()
-});
-type OrganizationOutput = z.infer<typeof OrganizationOutputSchema>
+})
+type GetOrganizationOutput = z.infer<typeof GetOrganizationOutputSchema>
 
 function selectOrganizationFromDomain(
   organizations: OrganizationSearchAPIResponse['organizations'],
@@ -218,10 +235,11 @@ function selectOrganizationFromDomain(
   return match.id
 }
 
-class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
+class GetOrganizationStage implements PipelineStage<GetOrganizationInput, GetOrganizationOutput> {
   name = 'Get Apollo Organization ID'
 
-  async process(input: Input, context: PipelineContext): Promise<OrganizationOutput> {
+  async process(input: GetOrganizationInput, context: PipelineContext): Promise<GetOrganizationOutput> {
+    GetOrganizationInputSchema.parse(input)
     let data
     let organizationId
 
@@ -278,7 +296,13 @@ class GetOrganizationStage implements PipelineStage<Input, OrganizationOutput> {
   }
 }
 
-const GetPeopleOutputSchema = OrganizationOutputSchema.extend({
+const GetPeopleInputSchema = z.object({
+  'Organization Name': z.string(),
+  organizationId: z.string()
+})
+type GetPeopleInput = z.infer<typeof GetPeopleInputSchema>
+
+const GetPeopleOutputSchema = GetPeopleInputSchema.extend({
   people: z.array(z.object({
     id: z.string(),
     first_name: z.string(),
@@ -290,10 +314,11 @@ const GetPeopleOutputSchema = OrganizationOutputSchema.extend({
 })
 type GetPeopleOutput = z.infer<typeof GetPeopleOutputSchema>
 
-class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutput> {
+class GetPeopleStage implements PipelineStage<GetPeopleInput, GetPeopleOutput> {
   name = 'Get contacts for organization in Apollo'
 
-  async process(input: OrganizationOutput, context: PipelineContext): Promise<GetPeopleOutput> {
+  async process(input: GetPeopleInput, context: PipelineContext): Promise<GetPeopleOutput> {
+    GetPeopleInputSchema.parse(input)
     let peopleData
     peopleData = await getPeople(input.organizationId, context.config.titlesToSearch)
     context.tracker.incrementApolloCalls()
@@ -316,7 +341,20 @@ class GetPeopleStage implements PipelineStage<OrganizationOutput, GetPeopleOutpu
   }
 }
 
-const GetBestContactOutputSchema = GetPeopleOutputSchema.extend({
+const GetBestContactInputSchema = z.object({
+  'Organization Name': z.string(),
+  people: z.array(z.object({
+    id: z.string(),
+    first_name: z.string(),
+    last_name_obfuscated: z.string(),
+    title: z.string(),
+    has_email: z.boolean(),
+    last_refreshed_at: z.string()
+  }))
+})
+type GetBestContactInput = z.infer<typeof GetBestContactInputSchema>
+
+const GetBestContactOutputSchema = GetBestContactInputSchema.extend({
   bestContactId: z.string()
 })
 type GetBestContactOutput = z.infer<typeof GetBestContactOutputSchema>
@@ -331,10 +369,11 @@ async function getBestContactWithLlm(returnedPeople: PeopleSearchAPIResponse['pe
   return match;
 }
 
-class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestContactOutput> {
+class GetBestContactStage implements PipelineStage<GetBestContactInput, GetBestContactOutput> {
   name = 'Get best contact from Apollo (just ID)'
 
-  async process(input: GetPeopleOutput, context: PipelineContext): Promise<GetBestContactOutput> {
+  async process(input: GetBestContactInput, context: PipelineContext): Promise<GetBestContactOutput> {
+    GetBestContactInputSchema.parse(input)
     let bestContactId
 
     // FIRST: Select solo option if there is only one
@@ -379,7 +418,12 @@ class GetBestContactStage implements PipelineStage<GetPeopleOutput, GetBestConta
   }
 }
 
-const EnrichContactOutputSchema = GetBestContactOutputSchema.extend({
+const EnrichContactInputSchema = z.object({
+  bestContactId: z.string()
+})
+type EnrichContactInput = z.infer<typeof EnrichContactInputSchema>
+
+const EnrichContactOutputSchema = EnrichContactInputSchema.extend({
   'Contact First Name': z.string(),
   'Contact Last Name': z.string(),
   'Contact Title': z.string(),
@@ -387,10 +431,11 @@ const EnrichContactOutputSchema = GetBestContactOutputSchema.extend({
 })
 type EnrichContactOutput = z.infer<typeof EnrichContactOutputSchema>
 
-class EnrichContactStage implements PipelineStage<GetBestContactOutput, EnrichContactOutput> {
+class EnrichContactStage implements PipelineStage<EnrichContactInput, EnrichContactOutput> {
   name = 'Enrich contact information for best contact in Apollo'
 
-  async process(input: GetBestContactOutput, context: PipelineContext): Promise<EnrichContactOutput> {
+  async process(input: EnrichContactInput, context: PipelineContext): Promise<EnrichContactOutput> {
+    EnrichContactInputSchema.parse(input)
     const data = await getPeopleEnrichment(input.bestContactId)
     context.tracker.incrementApolloCalls()
     context.tracker.incrementEnrichments()
@@ -405,7 +450,20 @@ class EnrichContactStage implements PipelineStage<GetBestContactOutput, EnrichCo
   }
 }
 
-const OutputSchema = z.strictObject({
+const PostProcessInputSchema = z.object({
+  'Organization Name': z.string(),
+  'Last Funding Amount (in USD)': z.coerce.number(),
+  'Last Funding Type': z.string(),
+  'Website': z.string(),
+  'Contact First Name': z.string(),
+  'Contact Last Name': z.string(),
+  'Contact Title': z.string(),
+  'Contact Email': z.string(),
+  'Lead Investors': z.string().nullable()
+})
+type PostProcessInput = z.infer<typeof PostProcessInputSchema>
+
+const OutputSchema = z.object({
   'Company Name': z.string(),
   'Funding': z.string(),
   'Funding Type': z.string(),
@@ -418,10 +476,11 @@ const OutputSchema = z.strictObject({
 })
 type Output = z.infer<typeof OutputSchema>
 
-class PostProcessStage implements PipelineStage<EnrichContactOutput, Output> {
+class PostProcessStage implements PipelineStage<PostProcessInput, Output> {
   name = 'Post process data'
 
-  process(input: EnrichContactOutput, _: PipelineContext): Output {
+  process(input: PostProcessInput, _: PipelineContext): Output {
+    PostProcessInputSchema.parse(input)
     return {
       'Company Name': input['Organization Name'],
       'Funding': formatFundingAmount(input['Last Funding Amount (in USD)']),
