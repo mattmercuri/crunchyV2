@@ -625,7 +625,7 @@ async function runLendbaeWithLocalCsv(inputRelativePath: string) {
     },
     config: {
       titlesToSearch: ['VP Operations', 'Vice President Operations', 'Head of Operations', 'Operations Manager'],
-      options: crunchyConfig.options['ALarge'],
+      options: crunchyConfig.options['ALarge'], // Not actually used,
       totalRows
     }
   }
@@ -669,7 +669,8 @@ async function runLendbaeWithLocalCsv(inputRelativePath: string) {
 
 
 async function main() {
-  runCrunchyWithLocalCsv('Crunchy2026JanuaryBCCS.csv', 'BCCS')
+  // runCrunchyWithLocalCsv('Crunchy2026JanuaryBCCS.csv', 'BCCS')
+  runLendbaeWithLocalCsv('LendBae_Sample.csv')
 }
 
 main()
