@@ -4,9 +4,11 @@ import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
 import { getInputFromCsv, writeToCsv } from "./services/csv.js";
-import { CompanyInputSchema, type CompanyInput, CompanyToCrunchStage, GetCompanyTypeStage, LendBaePostProcessStage, type LendBaePostProcessOutput, LendBaePostProcessOutputSchema } from "./lendbae.stages.js";
 import type { CrunchyOptions, RaiseSegment } from "./crunchy.config.js";
 import crunchyConfig from "./crunchy.config.js";
+import { CompanyInputSchema, type CompanyInput } from "./stages/companyToCrunch.lendbae.js";
+import { CompanyToCrunchStage, GetCompanyTypeStage, LendBaePostProcessStage } from "./stages/index.js";
+import { LendBaePostProcessOutputSchema, type LendBaePostProcessOutput } from "./stages/postProcess.lendbae.js";
 
 /**
  * TODO:
