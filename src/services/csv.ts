@@ -3,7 +3,7 @@ import * as csv from 'fast-csv';
 import z from 'zod';
 import path from 'path';
 
-const RawInputSchema = z.strictObject({
+const RawInputSchema = z.object({
   'Organization Name': z.string(),
   'Organization Name URL': z.string().nullable(),
   'Last Funding Date': z.string(),
@@ -18,26 +18,27 @@ const RawInputSchema = z.strictObject({
   'Website': z.string()
 });
 
-type RawInput = z.infer<typeof RawInputSchema>
-
-export async function getInputFromCsv(inputFile: string): Promise<{
-  rows: RawInput[]
+export async function getInputFromCsv<ZodSchema extends z.ZodTypeAny>(
+  inputFile: string,
+  schema: ZodSchema = RawInputSchema as unknown as ZodSchema
+): Promise<{
+  rows: z.infer<ZodSchema>[]
   totalRows: number
 }> {
-  const rows: RawInput[] = []
+  const rows: z.infer<ZodSchema>[] = []
   let totalRows = 0
 
   const consolidatedInputPath = path.resolve(`${process.cwd()}/src/inputFiles/`, inputFile)
 
   return new Promise((resolve, reject) => {
-    const parser = csv.parse<RawInput, RawInput>({ headers: true })
+    const parser = csv.parse({ headers: true })
 
     createReadStream(consolidatedInputPath)
       .pipe(parser)
       .on("error", reject)
       .on("data", (data) => {
         try {
-          const parsed = RawInputSchema.parse(data)
+          const parsed = schema.parse(data)
           rows.push(parsed)
           totalRows++
         } catch (err) {

@@ -547,7 +547,7 @@ class PostProcessStage implements PipelineStage<PostProcessInput, Output> {
 // }
 
 async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseSegment) {
-  const { rows, totalRows } = await getInputFromCsv(inputRelativePath)
+  const { rows, totalRows } = await getInputFromCsv(inputRelativePath, InputSchema)
 
   const cleanedRows: Input[] = []
   rows.forEach((row) => {
@@ -607,7 +607,7 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
 }
 
 async function runLendbaeWithLocalCsv(inputRelativePath: string) {
-  const { rows, totalRows } = await getInputFromCsv(inputRelativePath)
+  const { rows, totalRows } = await getInputFromCsv(inputRelativePath, CompanyInputSchema)
 
   const cleanedRows: CompanyInput[] = []
   rows.forEach((row) => {
