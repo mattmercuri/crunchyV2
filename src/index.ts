@@ -670,7 +670,7 @@ async function runLendbaeWithLocalCsv(inputRelativePath: string) {
 
 async function main() {
   // runCrunchyWithLocalCsv('Crunchy2026JanuaryBCCS.csv', 'BCCS')
-  runLendbaeWithLocalCsv('LendBae_Single.csv')
+  runLendbaeWithLocalCsv('LendBae_Sample.csv')
 }
 
 main()

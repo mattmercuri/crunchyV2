@@ -11,6 +11,7 @@ const COMPANY_TYPES = {
 
 export const CompanyInputSchema = z.object({
   'Company Name': z.string(),
+  'Company Name for Emails': z.string(),
   'Website': z.string(),
   'Company City': z.string(),
   'SIC Codes': z.string(),
@@ -21,7 +22,7 @@ export type CompanyInput = z.infer<typeof CompanyInputSchema>
 
 const CompanyToCrunchSchema = CompanyInputSchema.transform((input) => ({
   ...input,
-  'Organization Name': input['Company Name'],
+  'Organization Name': input['Company Name for Emails'],
   'Headquarters Location': input['Company City']
 }))
 export type CompanyToCrunchOutput = z.output<typeof CompanyToCrunchSchema>
@@ -57,6 +58,7 @@ export class LendBaePostProcessStage implements PipelineStage<LendBaePostProcess
   process(input: LendBaePostProcessOutput, _: PipelineContext): LendBaePostProcessOutput {
     return LendBaePostProcessOutputSchema.parse({
       'Company Name': input['Company Name'],
+      'Company Name for Emails': input['Company Name for Emails'],
       'Website': input['Website'],
       'Company City': input['Company City'],
       'SIC Codes': input['SIC Codes'],
