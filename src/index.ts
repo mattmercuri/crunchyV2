@@ -4,6 +4,7 @@ import { getDomain } from "./services/domains.js";
 import { getBestTitle } from "./services/openai.js";
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "./services/utils.js";
 import { getInputFromCsv, writeToCsv } from "./services/csv.js";
+import { CompanyInputSchema, type CompanyInput, CompanyToCrunchStage, GetCompanyTypeStage } from "./lendbae.stages.js";
 import type { CrunchyOptions, RaiseSegment } from "./crunchy.config.js";
 import crunchyConfig from "./crunchy.config.js";
 
@@ -605,75 +606,65 @@ async function runCrunchyWithLocalCsv(inputRelativePath: string, segment: RaiseS
   writeToCsv(`PROCESSED_${timestamp}_${inputRelativePath}`, validatedFinalRows)
 }
 
-// const LendBaeInputSchema = z.object({
-//   'Company Name': z.string(),
-//   'Website': z.string(),
-//   'Company City': z.string(),
-//   'SIC Codes': z.string(),
-//   'NAICS Codes': z.string(),
-//   'Short Description': z.string()
-// })
-// type LendBaeInput = z.infer<typeof LendBaeInputSchema>
+async function runLendbaeWithLocalCsv(inputRelativePath: string) {
+  const { rows, totalRows } = await getInputFromCsv(inputRelativePath)
 
-// async function runLendbaeWithLocalCsv(inputRelativePath: string) {
-//   const { rows, totalRows } = await getInputFromCsv(inputRelativePath)
+  const cleanedRows: CompanyInput[] = []
+  rows.forEach((row) => {
+    const { success, data } = z.safeParse(CompanyInputSchema, row)
+    if (success) {
+      cleanedRows.push(data)
+    }
+  })
 
-//   const cleanedRows: LendBaeInput[] = []
-//   rows.forEach((row) => {
-//     const { success, data } = z.safeParse(LendBaeInputSchema, row)
-//     if (success) {
-//       cleanedRows.push(data)
-//     }
-//   })
+  const context: PipelineContext = {
+    logger: new RunLogger(),
+    tracker: new RunTracker(),
+    throwError: (message: string) => {
+      throw new Error(message)
+    },
+    config: {
+      titlesToSearch: ['VP Operations', 'Vice President Operations', 'Head of Operations', 'Operations Manager'],
+      options: crunchyConfig.options['ALarge'],
+      totalRows
+    }
+  }
 
-//   const context: PipelineContext = {
-//     logger: new RunLogger(),
-//     tracker: new RunTracker(),
-//     throwError: (message: string) => {
-//       throw new Error(message)
-//     },
-//     config: {
-//       titlesToSearch: crunchyConfig.bestTitle.titlePriorities[segment],
-//       options: crunchyConfig.options[segment],
-//       totalRows
-//     }
-//   }
+  const pipeline = Pipeline.create<CompanyInput>()
+    .pipe(new CompanyToCrunchStage())
+    .pipe(new GetCompanyTypeStage())
+    .pipe(new GetOrganizationStage())
+    .pipe(new GetPeopleStage())
+    .pipe(new GetBestContactStage())
+    .pipe(new EnrichContactStage())
 
-//   const pipeline = Pipeline.create<Input>()
-//     .pipe(new PreProcessStage())
-//     .pipe(new GetOrganizationStage())
-//     .pipe(new GetPeopleStage())
-//     .pipe(new GetBestContactStage())
-//     .pipe(new EnrichContactStage())
-//     .pipe(new PostProcessStage())
+  const completedRows: Output[] = []
+  for (const row of cleanedRows) {
+    try {
+      const result = await pipeline.run(row, context)
+      completedRows.push(result)
+    } catch (err) {
+      if (err instanceof Error) {
+        context.logger.error(`PIPELINE ERROR - ${err.message}`)
+      } else {
+        context.logger.error('Unknown Pipeline Error')
+      }
+    }
+  }
 
-//   const completedRows: Output[] = []
-//   for (const row of cleanedRows) {
-//     try {
-//       const result = await pipeline.run(row, context)
-//       completedRows.push(result)
-//     } catch (err) {
-//       if (err instanceof Error) {
-//         context.logger.error(`PIPELINE ERROR - ${err.message}`)
-//       } else {
-//         context.logger.error('Unknown Pipeline Error')
-//       }
-//     }
-//   }
+  const validatedFinalRows: Output[] = []
+  completedRows.forEach(completedRow => {
+    const { success, data } = z.safeParse(OutputSchema, completedRow)
+    if (success) {
+      validatedFinalRows.push(data)
+    }
+  })
 
-//   const validatedFinalRows: Output[] = []
-//   completedRows.forEach(completedRow => {
-//     const { success, data } = z.safeParse(OutputSchema, completedRow)
-//     if (success) {
-//       validatedFinalRows.push(data)
-//     }
-//   })
+  context.tracker.logSummaryStats()
 
-//   context.tracker.logSummaryStats()
-
-//   const timestamp = new Date().toISOString();
-//   writeToCsv(`PROCESSED_${timestamp}_${inputRelativePath}`, validatedFinalRows)
-// }
+  const timestamp = new Date().toISOString();
+  writeToCsv(`PROCESSED_${timestamp}_${inputRelativePath}`, validatedFinalRows)
+}
 
 
 async function main() {

@@ -9,7 +9,7 @@ const COMPANY_TYPES = {
   'Unsure': 'If you are unsure about the classification of the company based on the provided information, you can select this option. It indicates that there is not enough information to confidently classify the company as either a LendTech or a Lender.'
 }
 
-const CompanyTypeInputSchema = z.object({
+export const CompanyInputSchema = z.object({
   'Company Name': z.string(),
   'Website': z.string(),
   'Company City': z.string(),
@@ -17,14 +17,32 @@ const CompanyTypeInputSchema = z.object({
   'NAICS Codes': z.string(),
   'Short Description': z.string()
 })
-type CompanyTypeInput = z.infer<typeof CompanyTypeInputSchema>
+export type CompanyInput = z.infer<typeof CompanyInputSchema>
+
+const CompanyToCrunchSchema = CompanyInputSchema.transform((input) => ({
+  ...input,
+  'Organization Name': input['Company Name'],
+  'Headquarters Location': input['Company City']
+}))
+export type CompanyToCrunchOutput = z.output<typeof CompanyToCrunchSchema>
+
+export class CompanyToCrunchStage implements PipelineStage<CompanyInput, CompanyToCrunchOutput> {
+  name = 'Normalize input for Crunchy stages'
+
+  process(input: CompanyInput, _: PipelineContext): CompanyToCrunchOutput {
+    return CompanyToCrunchSchema.parse(input)
+  }
+}
+
+const CompanyTypeInputSchema = CompanyInputSchema
+type CompanyTypeInput = CompanyInput
 
 const CompanyTypeOutputSchema = CompanyTypeInputSchema.extend({
   'Company Type': z.enum(COMPANY_TYPES)
 })
 type CompanyTypeOutput = z.infer<typeof CompanyTypeOutputSchema>
 
-export class GetCompanyType implements PipelineStage<CompanyTypeInput, CompanyTypeOutput> {
+export class GetCompanyTypeStage implements PipelineStage<CompanyTypeInput, CompanyTypeOutput> {
   name = 'Classify appropriate company type'
 
   async process(input: CompanyTypeInput, context: PipelineContext): Promise<CompanyTypeOutput> {
