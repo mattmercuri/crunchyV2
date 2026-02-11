@@ -1,6 +1,6 @@
 import z from "zod"
 import { getPeopleEnrichment } from "../services/apollo.js"
-import type { PipelineContext, PipelineStage } from "../index.js"
+import type { PipelineContext, PipelineStage } from "../pipeline.js"
 
 const EnrichContactInputSchema = z.object({
   bestContactId: z.string()

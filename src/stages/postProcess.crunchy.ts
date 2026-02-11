@@ -1,5 +1,5 @@
 import z from "zod"
-import type { PipelineContext, PipelineStage } from "../index.js"
+import type { PipelineContext, PipelineStage } from "../pipeline.js"
 import { formatFundingAmount, formatLeadInvestor, lowercaseFirst } from "../services/utils.js"
 
 const PostProcessInputSchema = z.object({

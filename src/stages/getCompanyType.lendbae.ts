@@ -1,6 +1,6 @@
 import z from "zod"
-import type { PipelineContext, PipelineStage } from "../index.js"
 import { getCompanyType, type CompanyTypeConfig } from "../services/openai.js"
+import type { PipelineContext, PipelineStage } from "../pipeline.js"
 
 export const COMPANY_TYPES = {
   'LendTech': 'A company that provides technology solutions to lenders, such as software platforms, data analytics, loan management systems, loan origination software, etc.',

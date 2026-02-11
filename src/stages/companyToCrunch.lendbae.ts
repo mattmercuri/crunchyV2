@@ -1,5 +1,5 @@
 import z from "zod"
-import type { PipelineContext, PipelineStage } from "../index.js"
+import type { PipelineContext, PipelineStage } from "../pipeline.js"
 
 export const CompanyInputSchema = z.object({
   'Company Name': z.string(),

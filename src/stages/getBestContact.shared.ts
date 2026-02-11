@@ -1,7 +1,7 @@
 import z from "zod";
 import { getBestTitle } from "../services/openai.js";
 import type { PeopleSearchAPIResponse } from "../services/apollo.js";
-import type { PipelineContext, PipelineStage } from "../index.js";
+import type { PipelineContext, PipelineStage } from "../pipeline.js";
 
 const GetBestContactInputSchema = z.object({
   'Organization Name': z.string(),

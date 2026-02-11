@@ -1,6 +1,6 @@
 import z from "zod"
-import type { PipelineContext, PipelineStage } from "../index.js"
 import { CompanyInputSchema, COMPANY_TYPES } from "./getCompanyType.lendbae.js"
+import type { PipelineContext, PipelineStage } from "../pipeline.js"
 
 export const LendBaePostProcessOutputSchema = CompanyInputSchema.extend({
   'Company Type': z.enum(Object.keys(COMPANY_TYPES)),
