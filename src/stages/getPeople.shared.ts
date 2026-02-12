@@ -32,7 +32,15 @@ export class GetPeopleStage implements PipelineStage<GetPeopleInput, GetPeopleOu
     peopleData = peopleData.people.filter(person => person.has_email)
 
     if (!peopleData.length) {
-      peopleData = await getPeople(input.organizationId, [], true)
+      // Trying to find senior people without regard to titles
+      peopleData = await getPeople(input.organizationId, [], true, false)
+      context.tracker.incrementApolloCalls()
+      peopleData = peopleData.people.filter(person => person.has_email)
+    }
+
+    if (!peopleData.length) {
+      // Trying to find anyone with an email, doesn't need to be senior
+      peopleData = await getPeople(input.organizationId, [], false, false)
       context.tracker.incrementApolloCalls()
       peopleData = peopleData.people.filter(person => person.has_email)
     }
