@@ -18,11 +18,15 @@ export class GetBestTitlesStage implements PipelineStage<BestTitlesInput, BestTi
     BestTitlesInputSchema.parse(input)
 
     const titleMap: { [key: string]: string[] } = {
-      'Lender': ['VP of Operations', 'Head of Operations', 'Director of Operations', 'Chief Operating Officer', 'VP of Lending', 'Head of Lending', 'Director of Lending', 'Chief Lending Officer'],
-      'LendTech': ['Chief Technology Officer', 'VP of Engineering', 'Head of Engineering', 'Founder', 'Co-Founder', 'Chief Executive Officer', 'CEO'],
+      Lender: ['VP of Operations', 'Head of Operations', 'Director of Operations', 'Chief Operating Officer', 'VP of Lending', 'Head of Lending', 'Director of Lending', 'Chief Lending Officer'],
+      LendTech: ['Chief Technology Officer', 'VP of Engineering', 'Head of Engineering', 'Founder', 'Co-Founder', 'Chief Executive Officer', 'CEO'],
     }
 
     if (!(input['Company Type'] in titleMap)) {
+      if (context.config.titlesToSearch.length) {
+        return { ...input, 'Best Titles': context.config.titlesToSearch }
+      }
+
       context.throwError(`Company type ${input['Company Type']} not recognized. Valid types are: ${Object.keys(titleMap).join(', ')}`)
     }
 

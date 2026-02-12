@@ -4,7 +4,8 @@ import { getPeople } from "../services/apollo.js"
 
 const GetPeopleInputSchema = z.object({
   'Organization Name': z.string(),
-  organizationId: z.string()
+  organizationId: z.string(),
+  'Best Titles': z.array(z.string())
 })
 type GetPeopleInput = z.infer<typeof GetPeopleInputSchema>
 
@@ -26,7 +27,7 @@ export class GetPeopleStage implements PipelineStage<GetPeopleInput, GetPeopleOu
   async process(input: GetPeopleInput, context: PipelineContext): Promise<GetPeopleOutput> {
     GetPeopleInputSchema.parse(input)
     let peopleData
-    peopleData = await getPeople(input.organizationId, context.config.titlesToSearch)
+    peopleData = await getPeople(input.organizationId, input['Best Titles'])
     context.tracker.incrementApolloCalls()
     peopleData = peopleData.people.filter(person => person.has_email)
 
