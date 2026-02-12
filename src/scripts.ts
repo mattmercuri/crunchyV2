@@ -3,7 +3,7 @@ import { getInputFromCsv, writeToCsv } from "./services/csv.js";
 import type { RaiseSegment } from "./crunchy.config.js";
 import crunchyConfig from "./crunchy.config.js";
 import { CompanyInputSchema, type CompanyInput } from "./stages/companyToCrunch.lendbae.js";
-import { CompanyToCrunchStage, EnrichContactStage, GetBestContactStage, GetCompanyTypeStage, GetOrganizationStage, GetPeopleStage, LendBaePostProcessStage, PostProcessStage, PreProcessStage } from "./stages/index.js";
+import { CompanyToCrunchStage, EnrichContactStage, GetBestContactStage, GetBestTitlesStage, GetCompanyTypeStage, GetOrganizationStage, GetPeopleStage, LendBaePostProcessStage, PostProcessStage, PreProcessStage } from "./stages/index.js";
 import { LendBaePostProcessOutputSchema, type LendBaePostProcessOutput } from "./stages/postProcess.lendbae.js";
 import { Pipeline, RunLogger, RunTracker, type PipelineContext } from "./pipeline.js";
 
@@ -80,6 +80,7 @@ export async function runCrunchyWithLocalCsv(inputRelativePath: string, segment:
   const pipeline = Pipeline.create<Input>()
     .pipe(new PreProcessStage())
     .pipe(new GetOrganizationStage())
+    .pipe(new GetBestTitlesStage())
     .pipe(new GetPeopleStage())
     .pipe(new GetBestContactStage())
     .pipe(new EnrichContactStage())
@@ -141,6 +142,7 @@ export async function runLendbaeWithLocalCsv(inputRelativePath: string) {
     .pipe(new CompanyToCrunchStage())
     .pipe(new GetCompanyTypeStage())
     .pipe(new GetOrganizationStage())
+    .pipe(new GetBestTitlesStage())
     .pipe(new GetPeopleStage())
     .pipe(new GetBestContactStage())
     .pipe(new EnrichContactStage())
