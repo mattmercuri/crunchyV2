@@ -16,6 +16,7 @@ export class GetBestTitlesStage implements PipelineStage<BestTitlesInput, BestTi
 
   async process(input: BestTitlesInput, context: PipelineContext): Promise<BestTitlesOutput> {
     BestTitlesInputSchema.parse(input)
+
     const titleMap: { [key: string]: string[] } = {
       'Lender': ['VP of Operations', 'Head of Operations', 'Director of Operations', 'Chief Operating Officer', 'VP of Lending', 'Head of Lending', 'Director of Lending', 'Chief Lending Officer'],
       'LendTech': ['Chief Technology Officer', 'VP of Engineering', 'Head of Engineering', 'Founder', 'Co-Founder', 'Chief Executive Officer', 'CEO'],
