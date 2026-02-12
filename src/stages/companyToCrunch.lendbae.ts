@@ -22,7 +22,9 @@ export type CompanyToCrunchOutput = z.output<typeof CompanyToCrunchSchema>
 export class CompanyToCrunchStage implements PipelineStage<CompanyInput, CompanyToCrunchOutput> {
   name = 'Normalize input for Crunchy stages'
 
-  process(input: CompanyInput, _: PipelineContext): CompanyToCrunchOutput {
+  process(input: CompanyInput, context: PipelineContext): CompanyToCrunchOutput {
+    const totalProcessed = context.tracker.errors + context.tracker.enrichments
+    context.logger.info(`(${totalProcessed + 1}/${context.config.totalRows}) Starting enrichment for ${input['Company Name for Emails']}...`)
     return CompanyToCrunchSchema.parse(input)
   }
 }
